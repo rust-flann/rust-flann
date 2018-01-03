@@ -1,3 +1,5 @@
+#![allow(unknown_lints)]
+#![allow(const_static_lifetime)]
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
