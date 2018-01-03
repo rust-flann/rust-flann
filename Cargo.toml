@@ -1,0 +1,9 @@
+[package]
+authors = ["Adnan Ademovic <adnanademovic100@gmail.com>"]
+name = "flann"
+version = "0.1.0"
+
+[build-dependencies]
+bindgen = "0.32.1"
+
+[dependencies]
