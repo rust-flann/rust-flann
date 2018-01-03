@@ -1,7 +1,11 @@
 [package]
 authors = ["Adnan Ademovic <adnanademovic100@gmail.com>"]
+description = "Bindings for the FLANN library"
+license = "MIT"
 name = "flann"
-version = "0.1.0"
+readme = "README.md"
+repository = "https://github.com/adnanademovic/rust-flann"
+version = "0.0.1"
 
 [build-dependencies]
 bindgen = "0.32.1"
