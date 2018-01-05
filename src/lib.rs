@@ -1,6 +1,5 @@
 #[deny(warnings)]
-
-pub mod raw;
+pub extern crate flann_sys as raw;
 
 macro_rules! convertable_enum {
     ($name: ident; $type: ty; $($key: ident = $value: path,)*) => {
@@ -54,7 +53,7 @@ convertable_enum!(LogLevel; u32;
     Debug = raw::flann_log_level_t_FLANN_LOG_DEBUG,
 );
 
-convertable_enum!(Distance; u32;
+convertable_enum!(DistanceType; u32;
     Euclidean = raw::flann_distance_t_FLANN_DIST_EUCLIDEAN,
     L2 = raw::flann_distance_t_FLANN_DIST_L2,
     Manhattan = raw::flann_distance_t_FLANN_DIST_MANHATTAN,
@@ -119,6 +118,15 @@ pub struct Parameters {
     pub multi_probe_level: u32,
     pub log_level: LogLevel,
     pub random_seed: i64,
+    pub distance_type: DistanceType,
+    pub distance_order: i32,
+}
+
+impl Default for Parameters {
+    fn default() -> Parameters {
+        Parameters::from_raw(unsafe { raw::DEFAULT_FLANN_PARAMETERS })
+            .expect("Illegal default FLANN parameters in C bindings")
+    }
 }
 
 impl Parameters {
@@ -135,8 +143,9 @@ impl Parameters {
             leaf_max_size: v.leaf_max_size,
             branching: v.branching,
             iterations: v.iterations,
-            centers_init: CentersInit::from_raw(v.centers_init)
-                .ok_or_else(|| format!("Illegal centers init enum value: {}", v.centers_init))?,
+            centers_init: CentersInit::from_raw(v.centers_init).ok_or_else(|| {
+                format!("Illegal centers init enum value: {}", v.centers_init)
+            })?,
             cb_index: v.cb_index,
             target_precision: v.target_precision,
             build_weight: v.build_weight,
@@ -148,6 +157,10 @@ impl Parameters {
             log_level: LogLevel::from_raw(v.log_level)
                 .ok_or_else(|| format!("Illegal log level enum value: {}", v.log_level))?,
             random_seed: v.random_seed,
+            distance_type: DistanceType::from_raw(v.distance_type).ok_or_else(|| {
+                format!("Illegal distanc etype enum value: {}", v.log_level)
+            })?,
+            distance_order: v.distance_order,
         })
     }
 }
@@ -176,6 +189,8 @@ impl<'a> Into<raw::FLANNParameters> for &'a Parameters {
             multi_probe_level_: self.multi_probe_level,
             log_level: self.log_level.as_raw(),
             random_seed: self.random_seed,
+            distance_type: self.distance_type.as_raw(),
+            distance_order: self.distance_order,
         }
     }
 }
@@ -184,12 +199,4 @@ impl Into<raw::FLANNParameters> for Parameters {
     fn into(self) -> raw::FLANNParameters {
         (&self).into()
     }
-}
-
-pub fn log_verbosity(level: LogLevel) {
-    unsafe { raw::flann_log_verbosity(level.as_raw() as i32) }
-}
-
-pub fn set_distance_type(distance_type: Distance, order: i32) {
-    unsafe { raw::flann_set_distance_type(distance_type.as_raw(), order) }
 }

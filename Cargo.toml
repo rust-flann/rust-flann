@@ -7,7 +7,5 @@ readme = "README.md"
 repository = "https://github.com/adnanademovic/rust-flann"
 version = "0.0.1"
 
-[build-dependencies]
-bindgen = "0.32.1"
-
-[dependencies]
+[dependencies.flann-sys]
+path = "flann-sys"

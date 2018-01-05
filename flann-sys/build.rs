@@ -1,10 +1,16 @@
 extern crate bindgen;
+extern crate cc;
 
 use std::env;
 use std::path::PathBuf;
 
 fn main() {
     println!("cargo:rustc-link-lib=flann");
+
+    cc::Build::new()
+        .cpp(true)
+        .file("wrapper.cpp")
+        .compile("wrapper.a");
 
     let bindings = bindgen::Builder::default()
         .header("wrapper.h")
