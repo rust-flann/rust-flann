@@ -91,16 +91,16 @@ FLANN_EXPORT extern struct FLANNParameters DEFAULT_FLANN_PARAMETERS;
 #define FLANN_FIND_NEAREST_NEIGHBORS(T, R)                                 \
   FLANN_EXPORT int flann_find_nearest_neighbors_##T(                       \
       T* dataset, int rows, int cols, T* testset, int trows, int* indices, \
-      T* dists, int nn, struct FLANNParameters* flann_params);
+      R* dists, int nn, struct FLANNParameters* flann_params);
 
 #define FLANN_FIND_NEAREST_NEIGHBORS_INDEX(T, R)                             \
   FLANN_EXPORT int flann_find_nearest_neighbors_index_##T(                   \
-      flann_index_t index_id, T* testset, int trows, int* indices, T* dists, \
+      flann_index_t index_id, T* testset, int trows, int* indices, R* dists, \
       int nn, struct FLANNParameters* flann_params);
 
 #define FLANN_RADIUS_SEARCH(T, R)                                            \
   FLANN_EXPORT int flann_radius_search_##T(                                  \
-      flann_index_t index_ptr, T* query, int* indices, T* dists, int max_nn, \
+      flann_index_t index_ptr, T* query, int* indices, R* dists, int max_nn, \
       float radius, struct FLANNParameters* flann_params);
 
 #define FLANN_FREE_INDEX(T, R)                                  \
@@ -109,7 +109,7 @@ FLANN_EXPORT extern struct FLANNParameters DEFAULT_FLANN_PARAMETERS;
 
 #define FLANN_COMPUTE_CLUSTER_CENTERS(T, R)                    \
   FLANN_EXPORT int flann_compute_cluster_centers_##T(          \
-      T* dataset, int rows, int cols, int clusters, T* result, \
+      T* dataset, int rows, int cols, int clusters, R* result, \
       struct FLANNParameters* flann_params);
 
 #define FLANN_IMPL(T, R)                   \
