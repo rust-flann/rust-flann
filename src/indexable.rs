@@ -1,7 +1,7 @@
 use raw::{flann_index_t, FLANNParameters};
 use std::os::raw::{c_int, c_uint};
 
-pub unsafe trait Indexable {
+pub unsafe trait Indexable: Clone {
     type ResultType;
 
     unsafe fn build_index(
