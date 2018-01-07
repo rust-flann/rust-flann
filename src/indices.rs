@@ -69,9 +69,11 @@ macro_rules! impl_index {
             unsafe fn get_point(
                 index_ptr: flann_index_t,
                 point_id: c_uint,
+                point: *mut Self,
+                columns: c_int,
                 flann_params: *mut FLANNParameters,
-            ) -> *mut Self {
-                raw::$get_point(index_ptr, point_id, flann_params)
+            ) -> c_int {
+                raw::$get_point(index_ptr, point_id,point,columns, flann_params)
             }
 
             #[inline]

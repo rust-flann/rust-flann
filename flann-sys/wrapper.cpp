@@ -410,11 +410,18 @@ T* _flann_get_point(flann_index_t index_ptr, unsigned int point_id,
   }
 }
 
-#define FLANN_GET_POINT(T, R)                                                 \
-  FLANN_EXPORT T* flann_get_point_##T(flann_index_t index_ptr,                \
-                                      unsigned int point_id,                  \
-                                      struct FLANNParameters* flann_params) { \
-    return _flann_get_point<T>(index_ptr, point_id, flann_params);            \
+#define FLANN_GET_POINT(T, R)                                                \
+  FLANN_EXPORT int flann_get_point_##T(                                      \
+      flann_index_t index_ptr, unsigned int point_id, T* point, int columns, \
+      struct FLANNParameters* flann_params) {                                \
+    T* value = _flann_get_point<T>(index_ptr, point_id, flann_params);       \
+    if (value == NULL) {                                                     \
+      return -1;                                                             \
+    }                                                                        \
+    for (int idx = 0; idx < columns; ++idx) {                                \
+      point[idx] = value[idx];                                               \
+    }                                                                        \
+    return 0;                                                                \
   }
 
 template <typename Distance>

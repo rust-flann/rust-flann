@@ -1,8 +1,9 @@
 use raw::{flann_index_t, FLANNParameters};
+use std::fmt::Debug;
 use std::os::raw::{c_int, c_uint};
 
-pub unsafe trait Indexable: Clone {
-    type ResultType;
+pub unsafe trait Indexable: Clone + Debug + Default {
+    type ResultType: Clone + Debug + Default;
 
     unsafe fn build_index(
         dataset: *mut Self,
@@ -30,8 +31,10 @@ pub unsafe trait Indexable: Clone {
     unsafe fn get_point(
         index_ptr: flann_index_t,
         point_id: c_uint,
+        point: *mut Self,
+        columns: c_int,
         flann_params: *mut FLANNParameters,
-    ) -> *mut Self;
+    ) -> c_int;
 
     unsafe fn veclen(index_ptr: flann_index_t, flann_params: *mut FLANNParameters) -> c_uint;
 

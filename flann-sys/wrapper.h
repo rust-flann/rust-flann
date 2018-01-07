@@ -61,10 +61,10 @@ FLANN_EXPORT extern struct FLANNParameters DEFAULT_FLANN_PARAMETERS;
       flann_index_t index_ptr, unsigned int point_id, \
       struct FLANNParameters* flann_params);
 
-#define FLANN_GET_POINT(T, R)                                  \
-  FLANN_EXPORT T* flann_get_point_##T(flann_index_t index_ptr, \
-                                      unsigned int point_id,   \
-                                      struct FLANNParameters* flann_params);
+#define FLANN_GET_POINT(T, R)                                                \
+  FLANN_EXPORT int flann_get_point_##T(                                      \
+      flann_index_t index_ptr, unsigned int point_id, T* point, int columns, \
+      struct FLANNParameters* flann_params);
 
 #define FLANN_VECLEN(T, R)                    \
   FLANN_EXPORT unsigned int flann_veclen_##T( \
