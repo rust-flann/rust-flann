@@ -10,7 +10,7 @@ type Datum<T, N> = GenericArray<T, N>;
 
 pub struct Index<T: Indexable, N: ArrayLength<T>> {
     index: raw::flann_index_t,
-    point_memory: Vec<T>,
+    point_memory: Vec<Vec<T>>,
     parameters: Mutex<raw::FLANNParameters>,
     _phantom: PhantomData<(T, N)>,
 }
@@ -31,15 +31,18 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
         if dataset.is_empty() {
             return None;
         }
-        let mut point_memory = dataset
-            .iter()
-            .flat_map(|v| v.iter().cloned())
-            .collect::<Vec<T>>();
+        let mut point_memory = Vec::new();
+        point_memory.push(
+            dataset
+                .iter()
+                .flat_map(|v| v.iter().cloned())
+                .collect::<Vec<T>>(),
+        );
         let mut speedup = 0.0;
         let mut flann_params = parameters.into();
         let index = unsafe {
             T::build_index(
-                point_memory.as_mut_ptr(),
+                point_memory.last_mut().unwrap().as_mut_ptr(),
                 dataset.len() as i32,
                 N::to_i32(),
                 &mut speedup,
@@ -58,15 +61,11 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
     }
 
     pub fn add(&mut self, point: &Datum<T, N>, rebuild_threshold: Option<f32>) {
-        let data_start = self.point_memory.len();
-        point
-            .iter()
-            .cloned()
-            .for_each(|v| self.point_memory.push(v));
+        self.point_memory.push(point.iter().cloned().collect());
         let retval = unsafe {
             T::add_points(
                 self.index,
-                self.point_memory[data_start..].as_mut_ptr(),
+                self.point_memory.last_mut().unwrap().as_mut_ptr(),
                 1,
                 N::to_i32(),
                 rebuild_threshold.unwrap_or(2.0),
@@ -80,14 +79,12 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
         if points.is_empty() {
             return;
         }
-        let data_start = self.point_memory.len();
-        points.iter().for_each(|v| {
-            v.iter().cloned().for_each(|v| self.point_memory.push(v))
-        });
+        self.point_memory
+            .push(points.iter().flat_map(|v| v.iter().cloned()).collect());
         let retval = unsafe {
             T::add_points(
                 self.index,
-                self.point_memory[data_start..].as_mut_ptr(),
+                self.point_memory.last_mut().unwrap().as_mut_ptr(),
                 points.len() as i32,
                 N::to_i32(),
                 rebuild_threshold.unwrap_or(2.0),
