@@ -1,6 +1,6 @@
 #![deny(warnings)]
 
-#[allow(unused_imports)]
+#[allow(unknown_lints, useless_attribute, unused_imports)]
 #[macro_use]
 extern crate generic_array;
 pub extern crate flann_sys as raw;

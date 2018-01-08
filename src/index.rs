@@ -95,7 +95,7 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
     }
 
     pub fn get(&self, idx: usize) -> Option<Datum<T, N>> {
-        if idx >= self.len() {
+        if idx >= self.count() {
             return None;
         }
         let mut point = vec![T::default(); N::to_usize()];
@@ -125,7 +125,7 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
         }
     }
 
-    pub fn len(&self) -> usize {
+    pub fn count(&self) -> usize {
         let l = unsafe {
             T::size(
                 self.index,

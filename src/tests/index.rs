@@ -12,11 +12,11 @@ fn builds_and_adds() {
         ],
         Parameters::default(),
     ).unwrap();
-    assert_eq!(index.len(), 5);
+    assert_eq!(index.count(), 5);
     index.add(&Default::default(), None);
-    assert_eq!(index.len(), 6);
+    assert_eq!(index.count(), 6);
     index.add_multiple(&[], None);
-    assert_eq!(index.len(), 6);
+    assert_eq!(index.count(), 6);
     index.add_multiple(
         &[
             Default::default(),
@@ -26,7 +26,7 @@ fn builds_and_adds() {
         ],
         None,
     );
-    assert_eq!(index.len(), 10);
+    assert_eq!(index.count(), 10);
 }
 
 #[test]
@@ -67,4 +67,30 @@ fn get_accesses_right_item() {
     assert_eq!(index.get(8), Some(arr![f32; 25, 26, 27]));
     assert_eq!(index.get(9), Some(arr![f32; 28, 29, 30]));
     assert_eq!(index.get(10), None);
+}
+
+#[test]
+fn nearest_neighbor_returns_correct_item() {
+    let index = Index::<f32, typenum::U3>::new(
+        &[
+            arr![f32; 0, 0, 0],
+            arr![f32; 0, 0, 1],
+            arr![f32; 0, 1, 0],
+            arr![f32; 0, 1, 1],
+            arr![f32; 1, 0, 0],
+            arr![f32; 1, 0, 1],
+            arr![f32; 1, 1, 0],
+            arr![f32; 1, 1, 1],
+        ],
+        Parameters::default(),
+    ).unwrap();
+
+    assert_eq!(index.find_nearest_neighbor(&arr![f32; -1, -1, -1]).0, 0);
+    assert_eq!(index.find_nearest_neighbor(&arr![f32; -1, -1, 2]).0, 1);
+    assert_eq!(index.find_nearest_neighbor(&arr![f32; -1, 2, -1]).0, 2);
+    assert_eq!(index.find_nearest_neighbor(&arr![f32; -1, 2, 2]).0, 3);
+    assert_eq!(index.find_nearest_neighbor(&arr![f32; 2, -1, -1]).0, 4);
+    assert_eq!(index.find_nearest_neighbor(&arr![f32; 2, -1, 2]).0, 5);
+    assert_eq!(index.find_nearest_neighbor(&arr![f32; 2, 2, -1]).0, 6);
+    assert_eq!(index.find_nearest_neighbor(&arr![f32; 2, 2, 2]).0, 7);
 }
