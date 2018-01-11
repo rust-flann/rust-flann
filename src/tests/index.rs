@@ -94,3 +94,92 @@ fn nearest_neighbor_returns_correct_item() {
     assert_eq!(index.find_nearest_neighbor(&arr![f32; 2, 2, -1]).0, 6);
     assert_eq!(index.find_nearest_neighbor(&arr![f32; 2, 2, 2]).0, 7);
 }
+
+#[test]
+fn search_radius_returns_correct_item() {
+    let index = Index::<f32, typenum::U3>::new(
+        &[
+            arr![f32; 0, 0, 0],
+            arr![f32; 0, 0, 1],
+            arr![f32; 0, 1, 0],
+            arr![f32; 0, 1, 1],
+            arr![f32; 1, 0, 0],
+            arr![f32; 1, 0, 1],
+            arr![f32; 1, 1, 0],
+            arr![f32; 1, 1, 1],
+        ],
+        Parameters::default(),
+    ).unwrap();
+
+    let mut indices = index
+        .search_radius(&arr![f32; 0, 0, -1], 1.1, 10)
+        .into_iter()
+        .map(|v| v.0)
+        .collect::<Vec<usize>>();
+    indices.sort();
+    assert_eq!(indices, vec![0]);
+
+    let mut indices = index
+        .search_radius(&arr![f32; 2, 0, 0], 1.1, 10)
+        .into_iter()
+        .map(|v| v.0)
+        .collect::<Vec<usize>>();
+    indices.sort();
+    assert_eq!(indices, vec![4]);
+
+    let mut indices = index
+        .search_radius(&arr![f32; 2, 0, 0], 10.0, 10)
+        .into_iter()
+        .map(|v| v.0)
+        .collect::<Vec<usize>>();
+    indices.sort();
+    assert_eq!(indices, vec![0, 1, 2, 3, 4, 5, 6, 7]);
+
+    let mut indices = index
+        .search_radius(&arr![f32; 2, 0, 0], 10.0, 0)
+        .into_iter()
+        .map(|v| v.0)
+        .collect::<Vec<usize>>();
+    indices.sort();
+    assert_eq!(indices, vec![]);
+
+    let mut indices = index
+        .search_radius(&arr![f32; 2, 0, 0], 2.1, 10)
+        .into_iter()
+        .map(|v| v.0)
+        .collect::<Vec<usize>>();
+    indices.sort();
+    assert_eq!(indices, vec![4, 5, 6]);
+
+    let mut indices = index
+        .search_radius(&arr![f32; 2, 0, 0], 3.1, 10)
+        .into_iter()
+        .map(|v| v.0)
+        .collect::<Vec<usize>>();
+    indices.sort();
+    assert_eq!(indices, vec![4, 5, 6, 7]);
+
+    let mut indices = index
+        .search_radius(&arr![f32; 2, 0, 0], 4.1, 10)
+        .into_iter()
+        .map(|v| v.0)
+        .collect::<Vec<usize>>();
+    indices.sort();
+    assert_eq!(indices, vec![0, 4, 5, 6, 7]);
+
+    let mut indices = index
+        .search_radius(&arr![f32; 2, 0, 0], 5.1, 10)
+        .into_iter()
+        .map(|v| v.0)
+        .collect::<Vec<usize>>();
+    indices.sort();
+    assert_eq!(indices, vec![0, 1, 2, 4, 5, 6, 7]);
+
+    let mut indices = index
+        .search_radius(&arr![f32; 2, 0, 0], 6.1, 10)
+        .into_iter()
+        .map(|v| v.0)
+        .collect::<Vec<usize>>();
+    indices.sort();
+    assert_eq!(indices, vec![0, 1, 2, 3, 4, 5, 6, 7]);
+}
