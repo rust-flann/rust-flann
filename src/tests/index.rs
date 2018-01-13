@@ -3,7 +3,7 @@ use super::*;
 #[test]
 fn builds_and_adds() {
     let mut index = Index::<f32, typenum::U3>::new(
-        &[
+        vec![
             Default::default(),
             Default::default(),
             Default::default(),
@@ -13,12 +13,12 @@ fn builds_and_adds() {
         Parameters::default(),
     ).unwrap();
     assert_eq!(index.count(), 5);
-    index.add(&Default::default(), None);
+    index.add(Default::default(), None);
     assert_eq!(index.count(), 6);
-    index.add_multiple(&[], None);
+    index.add_multiple(vec![], None);
     assert_eq!(index.count(), 6);
     index.add_multiple(
-        &[
+        vec![
             Default::default(),
             Default::default(),
             Default::default(),
@@ -32,7 +32,7 @@ fn builds_and_adds() {
 #[test]
 fn get_accesses_right_item() {
     let mut index = Index::<f32, typenum::U3>::new(
-        &[
+        vec![
             arr![f32; 1, 2, 3],
             arr![f32; 4, 5, 6],
             arr![f32; 7, 8, 9],
@@ -42,12 +42,12 @@ fn get_accesses_right_item() {
         Parameters::default(),
     ).unwrap();
 
-    index.add(&arr![f32; 16, 17, 18], None);
+    index.add(arr![f32; 16, 17, 18], None);
 
-    index.add_multiple(&[], None);
+    index.add_multiple(vec![], None);
 
     index.add_multiple(
-        &[
+        vec![
             arr![f32; 19, 20, 21],
             arr![f32; 22, 23, 24],
             arr![f32; 25, 26, 27],
@@ -56,23 +56,23 @@ fn get_accesses_right_item() {
         None,
     );
 
-    assert_eq!(index.get(0), Some(arr![f32; 1, 2, 3]));
-    assert_eq!(index.get(1), Some(arr![f32; 4, 5, 6]));
-    assert_eq!(index.get(2), Some(arr![f32; 7, 8, 9]));
-    assert_eq!(index.get(3), Some(arr![f32; 10, 11, 12]));
-    assert_eq!(index.get(4), Some(arr![f32; 13, 14, 15]));
-    assert_eq!(index.get(5), Some(arr![f32; 16, 17, 18]));
-    assert_eq!(index.get(6), Some(arr![f32; 19, 20, 21]));
-    assert_eq!(index.get(7), Some(arr![f32; 22, 23, 24]));
-    assert_eq!(index.get(8), Some(arr![f32; 25, 26, 27]));
-    assert_eq!(index.get(9), Some(arr![f32; 28, 29, 30]));
+    assert_eq!(index.get(0), Some(&arr![f32; 1.0, 2.0, 3.0]));
+    assert_eq!(index.get(1), Some(&arr![f32; 4.0, 5.0, 6.0]));
+    assert_eq!(index.get(2), Some(&arr![f32; 7.0, 8.0, 9.0]));
+    assert_eq!(index.get(3), Some(&arr![f32; 10.0, 11.0, 12.0]));
+    assert_eq!(index.get(4), Some(&arr![f32; 13.0, 14.0, 15.0]));
+    assert_eq!(index.get(5), Some(&arr![f32; 16.0, 17.0, 18.0]));
+    assert_eq!(index.get(6), Some(&arr![f32; 19.0, 20.0, 21.0]));
+    assert_eq!(index.get(7), Some(&arr![f32; 22.0, 23.0, 24.0]));
+    assert_eq!(index.get(8), Some(&arr![f32; 25.0, 26.0, 27.0]));
+    assert_eq!(index.get(9), Some(&arr![f32; 28.0, 29.0, 30.0]));
     assert_eq!(index.get(10), None);
 }
 
 #[test]
 fn nearest_neighbor_returns_correct_item() {
     let index = Index::<f32, typenum::U3>::new(
-        &[
+        vec![
             arr![f32; 0, 0, 0],
             arr![f32; 0, 0, 1],
             arr![f32; 0, 1, 0],
@@ -98,7 +98,7 @@ fn nearest_neighbor_returns_correct_item() {
 #[test]
 fn search_radius_returns_correct_item() {
     let index = Index::<f32, typenum::U3>::new(
-        &[
+        vec![
             arr![f32; 0, 0, 0],
             arr![f32; 0, 0, 1],
             arr![f32; 0, 1, 0],
@@ -166,14 +166,6 @@ fn search_radius_returns_correct_item() {
         .collect::<Vec<usize>>();
     indices.sort();
     assert_eq!(indices, vec![0, 4, 5, 6, 7]);
-
-    let mut indices = index
-        .search_radius(&arr![f32; 2, 0, 0], 5.1, 10)
-        .into_iter()
-        .map(|v| v.0)
-        .collect::<Vec<usize>>();
-    indices.sort();
-    assert_eq!(indices, vec![0, 1, 2, 4, 5, 6, 7]);
 
     let mut indices = index
         .search_radius(&arr![f32; 2, 0, 0], 6.1, 10)

@@ -11,6 +11,7 @@ type Datum<T, N> = GenericArray<T, N>;
 pub struct Index<T: Indexable, N: ArrayLength<T>> {
     index: raw::flann_index_t,
     point_memory: Vec<Vec<T>>,
+    points: Vec<Datum<T, N>>,
     parameters: Mutex<raw::FLANNParameters>,
     _phantom: PhantomData<(T, N)>,
 }
@@ -27,13 +28,13 @@ impl<T: Indexable, N: ArrayLength<T>> Drop for Index<T, N> {
 }
 
 impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
-    pub fn new(dataset: &[Datum<T, N>], parameters: Parameters) -> Option<Self> {
-        if dataset.is_empty() {
+    pub fn new(points: Vec<Datum<T, N>>, parameters: Parameters) -> Option<Self> {
+        if points.is_empty() {
             return None;
         }
         let mut point_memory = Vec::new();
         point_memory.push(
-            dataset
+            points
                 .iter()
                 .flat_map(|v| v.iter().cloned())
                 .collect::<Vec<T>>(),
@@ -43,7 +44,7 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
         let index = unsafe {
             T::build_index(
                 point_memory.last_mut().unwrap().as_mut_ptr(),
-                dataset.len() as i32,
+                points.len() as i32,
                 N::to_i32(),
                 &mut speedup,
                 &mut flann_params,
@@ -54,14 +55,16 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
         }
         Some(Self {
             point_memory,
+            points: points,
             index,
             parameters: Mutex::new(flann_params),
             _phantom: PhantomData,
         })
     }
 
-    pub fn add(&mut self, point: &Datum<T, N>, rebuild_threshold: Option<f32>) {
+    pub fn add(&mut self, point: Datum<T, N>, rebuild_threshold: Option<f32>) {
         self.point_memory.push(point.iter().cloned().collect());
+        self.points.push(point);
         let retval = unsafe {
             T::add_points(
                 self.index,
@@ -75,17 +78,19 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
         assert_eq!(retval, 0);
     }
 
-    pub fn add_multiple(&mut self, points: &[Datum<T, N>], rebuild_threshold: Option<f32>) {
+    pub fn add_multiple(&mut self, mut points: Vec<Datum<T, N>>, rebuild_threshold: Option<f32>) {
         if points.is_empty() {
             return;
         }
         self.point_memory
             .push(points.iter().flat_map(|v| v.iter().cloned()).collect());
+        let l = points.len() as i32;
+        self.points.append(&mut points);
         let retval = unsafe {
             T::add_points(
                 self.index,
                 self.point_memory.last_mut().unwrap().as_mut_ptr(),
-                points.len() as i32,
+                l,
                 N::to_i32(),
                 rebuild_threshold.unwrap_or(2.0),
                 self.parameters.lock().expect(LOCK_FAIL).deref_mut(),
@@ -94,28 +99,12 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
         assert_eq!(retval, 0);
     }
 
-    pub fn get(&self, idx: usize) -> Option<Datum<T, N>> {
-        if idx >= self.count() {
-            return None;
-        }
-        let mut point = vec![T::default(); N::to_usize()];
-        let retval = unsafe {
-            T::get_point(
-                self.index,
-                idx as u32,
-                point.as_mut_ptr(),
-                N::to_i32(),
-                self.parameters.lock().expect(LOCK_FAIL).deref_mut(),
-            )
-        };
-        if retval == 0 {
-            Some(Datum::<T, N>::clone_from_slice(&point))
-        } else {
-            None
-        }
+    pub fn get(&self, idx: usize) -> Option<&Datum<T, N>> {
+        self.points.get(idx)
     }
 
-    pub fn remove(&self, idx: usize) {
+    pub fn remove(&mut self, idx: usize) {
+        self.points.remove(idx);
         unsafe {
             T::remove_point(
                 self.index,
@@ -126,13 +115,7 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
     }
 
     pub fn count(&self) -> usize {
-        let l = unsafe {
-            T::size(
-                self.index,
-                self.parameters.lock().expect(LOCK_FAIL).deref_mut(),
-            )
-        };
-        l as usize
+        self.points.len()
     }
 
     pub fn find_nearest_neighbor(&self, point: &Datum<T, N>) -> (usize, T::ResultType) {
