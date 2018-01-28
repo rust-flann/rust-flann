@@ -258,6 +258,7 @@ impl_index!(
     flann_free_index_int32_t,
 );
 
+/*
 impl_index!(
     u32,
     f32,
@@ -272,3 +273,4 @@ impl_index!(
     flann_radius_search_uint32_t,
     flann_free_index_uint32_t,
 );
+*/

@@ -135,7 +135,7 @@ FLANN_IMPL(int16_t, float)
 FLANN_IMPL(int32_t, float)
 FLANN_IMPL(uint8_t, float)
 FLANN_IMPL(uint16_t, float)
-FLANN_IMPL(uint32_t, float)
+// FLANN_IMPL(uint32_t, float)
 
 #undef FLANN_BUILD_INDEX
 #undef FLANN_ADD_POINTS
