@@ -26,6 +26,8 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *************************************************************************/
 
+// C bindings have been heavily modified to account for index settings
+
 #define FLANN_FIRST_MATCH
 
 #include "wrapper.h"
@@ -56,7 +58,7 @@ struct FLANNParameters DEFAULT_FLANN_PARAMETERS = {FLANN_INDEX_KDTREE,
 
 using namespace flann;
 
-flann::IndexParams create_parameters(FLANNParameters* p) {
+flann::IndexParams create_parameters(const FLANNParameters* p) {
   flann::IndexParams params;
 
   params["algorithm"] = p->algorithm;
@@ -112,7 +114,7 @@ flann::IndexParams create_parameters(FLANNParameters* p) {
   return params;
 }
 
-flann::SearchParams create_search_params(FLANNParameters* p) {
+flann::SearchParams create_search_params(const FLANNParameters* p) {
   flann::SearchParams params;
   params.checks = p->checks;
   params.eps = p->eps;
@@ -176,7 +178,7 @@ void update_flann_parameters(const IndexParams& params,
   }
 }
 
-void init_flann_parameters(FLANNParameters* p) {
+void init_flann_parameters(const FLANNParameters* p) {
   if (p != NULL) {
     flann::log_verbosity(p->log_level);
     if (p->random_seed > 0) {
@@ -281,7 +283,8 @@ int __flann_add_points(flann_index_t index_ptr,
 
 template <typename T>
 int _flann_add_points(flann_index_t index_ptr, T* points, int rows, int columns,
-                      float rebuild_threshold, FLANNParameters* flann_params) {
+                      float rebuild_threshold,
+                      const FLANNParameters* flann_params) {
   if (flann_params->distance_type == FLANN_DIST_EUCLIDEAN) {
     return __flann_add_points<L2<T> >(index_ptr, points, rows, columns,
                                       rebuild_threshold);
@@ -311,12 +314,12 @@ int _flann_add_points(flann_index_t index_ptr, T* points, int rows, int columns,
   }
 }
 
-#define FLANN_ADD_POINTS(T, R)                                         \
-  FLANN_EXPORT int flann_add_points_##T(                               \
-      flann_index_t index_ptr, T* points, int rows, int columns,       \
-      float rebuild_threshold, struct FLANNParameters* flann_params) { \
-    return _flann_add_points<T>(index_ptr, points, rows, columns,      \
-                                rebuild_threshold, flann_params);      \
+#define FLANN_ADD_POINTS(T, R)                                        \
+  FLANN_EXPORT int flann_add_points_##T(                              \
+      flann_index_t index_ptr, T* points, int rows, int columns,      \
+      float rebuild_threshold, const FLANNParameters* flann_params) { \
+    return _flann_add_points<T>(index_ptr, points, rows, columns,     \
+                                rebuild_threshold, flann_params);     \
   }
 
 template <typename Distance>
@@ -338,7 +341,7 @@ int __flann_remove_point(flann_index_t index_ptr, unsigned int point_id_uint) {
 
 template <typename T>
 int _flann_remove_point(flann_index_t index_ptr, unsigned int point_id,
-                        FLANNParameters* flann_params) {
+                        const FLANNParameters* flann_params) {
   if (flann_params->distance_type == FLANN_DIST_EUCLIDEAN) {
     return __flann_remove_point<L2<T> >(index_ptr, point_id);
   } else if (flann_params->distance_type == FLANN_DIST_MANHATTAN) {
@@ -365,7 +368,7 @@ int _flann_remove_point(flann_index_t index_ptr, unsigned int point_id,
 #define FLANN_REMOVE_POINT(T, R)                                      \
   FLANN_EXPORT int flann_remove_point_##T(                            \
       flann_index_t index_ptr, unsigned int point_id,                 \
-      struct FLANNParameters* flann_params) {                         \
+      const FLANNParameters* flann_params) {                          \
     return _flann_remove_point<T>(index_ptr, point_id, flann_params); \
   }
 
@@ -387,7 +390,7 @@ typename Distance::ElementType* __flann_get_point(flann_index_t index_ptr,
 
 template <typename T>
 T* _flann_get_point(flann_index_t index_ptr, unsigned int point_id,
-                    FLANNParameters* flann_params) {
+                    const FLANNParameters* flann_params) {
   if (flann_params->distance_type == FLANN_DIST_EUCLIDEAN) {
     return __flann_get_point<L2<T> >(index_ptr, point_id);
   } else if (flann_params->distance_type == FLANN_DIST_MANHATTAN) {
@@ -413,7 +416,7 @@ T* _flann_get_point(flann_index_t index_ptr, unsigned int point_id,
 #define FLANN_GET_POINT(T, R)                                                \
   FLANN_EXPORT int flann_get_point_##T(                                      \
       flann_index_t index_ptr, unsigned int point_id, T* point, int columns, \
-      struct FLANNParameters* flann_params) {                                \
+      const FLANNParameters* flann_params) {                                 \
     T* value = _flann_get_point<T>(index_ptr, point_id, flann_params);       \
     if (value == NULL) {                                                     \
       return -1;                                                             \
@@ -440,7 +443,7 @@ unsigned int __flann_veclen(flann_index_t index_ptr) {
 
 template <typename T>
 unsigned int _flann_veclen(flann_index_t index_ptr,
-                           FLANNParameters* flann_params) {
+                           const FLANNParameters* flann_params) {
   if (flann_params->distance_type == FLANN_DIST_EUCLIDEAN) {
     return __flann_veclen<L2<T> >(index_ptr);
   } else if (flann_params->distance_type == FLANN_DIST_MANHATTAN) {
@@ -463,10 +466,10 @@ unsigned int _flann_veclen(flann_index_t index_ptr,
   }
 }
 
-#define FLANN_VECLEN(T, R)                                             \
-  FLANN_EXPORT unsigned int flann_veclen_##T(                          \
-      flann_index_t index_ptr, struct FLANNParameters* flann_params) { \
-    return _flann_veclen<T>(index_ptr, flann_params);                  \
+#define FLANN_VECLEN(T, R)                                            \
+  FLANN_EXPORT unsigned int flann_veclen_##T(                         \
+      flann_index_t index_ptr, const FLANNParameters* flann_params) { \
+    return _flann_veclen<T>(index_ptr, flann_params);                 \
   }
 
 template <typename Distance>
@@ -485,7 +488,7 @@ unsigned int __flann_size(flann_index_t index_ptr) {
 
 template <typename T>
 unsigned int _flann_size(flann_index_t index_ptr,
-                         FLANNParameters* flann_params) {
+                         const FLANNParameters* flann_params) {
   if (flann_params->distance_type == FLANN_DIST_EUCLIDEAN) {
     return __flann_size<L2<T> >(index_ptr);
   } else if (flann_params->distance_type == FLANN_DIST_MANHATTAN) {
@@ -508,10 +511,10 @@ unsigned int _flann_size(flann_index_t index_ptr,
   }
 }
 
-#define FLANN_SIZE(T, R)                                               \
-  FLANN_EXPORT unsigned int flann_size_##T(                            \
-      flann_index_t index_ptr, struct FLANNParameters* flann_params) { \
-    return _flann_size<T>(index_ptr, flann_params);                    \
+#define FLANN_SIZE(T, R)                                              \
+  FLANN_EXPORT unsigned int flann_size_##T(                           \
+      flann_index_t index_ptr, const FLANNParameters* flann_params) { \
+    return _flann_size<T>(index_ptr, flann_params);                   \
   }
 
 template <typename Distance>
@@ -529,7 +532,8 @@ int __flann_used_memory(flann_index_t index_ptr) {
 }
 
 template <typename T>
-int _flann_used_memory(flann_index_t index_ptr, FLANNParameters* flann_params) {
+int _flann_used_memory(flann_index_t index_ptr,
+                       const FLANNParameters* flann_params) {
   if (flann_params->distance_type == FLANN_DIST_EUCLIDEAN) {
     return __flann_used_memory<L2<T> >(index_ptr);
   } else if (flann_params->distance_type == FLANN_DIST_MANHATTAN) {
@@ -552,10 +556,10 @@ int _flann_used_memory(flann_index_t index_ptr, FLANNParameters* flann_params) {
   }
 }
 
-#define FLANN_USED_MEMORY(T, R)                                        \
-  FLANN_EXPORT int flann_used_memory_##T(                              \
-      flann_index_t index_ptr, struct FLANNParameters* flann_params) { \
-    return _flann_used_memory<T>(index_ptr, flann_params);             \
+#define FLANN_USED_MEMORY(T, R)                                       \
+  FLANN_EXPORT int flann_used_memory_##T(                             \
+      flann_index_t index_ptr, const FLANNParameters* flann_params) { \
+    return _flann_used_memory<T>(index_ptr, flann_params);            \
   }
 
 template <typename Distance>
@@ -577,7 +581,7 @@ int __flann_save_index(flann_index_t index_ptr, char* filename) {
 
 template <typename T>
 int _flann_save_index(flann_index_t index_ptr, char* filename,
-                      FLANNParameters* flann_params) {
+                      const FLANNParameters* flann_params) {
   if (flann_params->distance_type == FLANN_DIST_EUCLIDEAN) {
     return __flann_save_index<L2<T> >(index_ptr, filename);
   } else if (flann_params->distance_type == FLANN_DIST_MANHATTAN) {
@@ -601,11 +605,11 @@ int _flann_save_index(flann_index_t index_ptr, char* filename,
   }
 }
 
-#define FLANN_SAVE_INDEX(T, R)                                     \
-  FLANN_EXPORT int flann_save_index_##T(                           \
-      flann_index_t index_id, char* filename,                      \
-      struct FLANNParameters* flann_params) {                      \
-    return _flann_save_index<T>(index_id, filename, flann_params); \
+#define FLANN_SAVE_INDEX(T, R)                                                 \
+  FLANN_EXPORT int flann_save_index_##T(flann_index_t index_id,                \
+                                        char* filename,                        \
+                                        const FLANNParameters* flann_params) { \
+    return _flann_save_index<T>(index_id, filename, flann_params);             \
   }
 
 template <typename Distance>
@@ -625,7 +629,7 @@ flann_index_t __flann_load_index(char* filename,
 
 template <typename T>
 flann_index_t _flann_load_index(char* filename, T* dataset, int rows, int cols,
-                                FLANNParameters* flann_params) {
+                                const FLANNParameters* flann_params) {
   if (flann_params->distance_type == FLANN_DIST_EUCLIDEAN) {
     return __flann_load_index<L2<T> >(filename, dataset, rows, cols);
   } else if (flann_params->distance_type == FLANN_DIST_MANHATTAN) {
@@ -656,7 +660,7 @@ flann_index_t _flann_load_index(char* filename, T* dataset, int rows, int cols,
 #define FLANN_LOAD_INDEX(T, R)                                                \
   FLANN_EXPORT flann_index_t flann_load_index_##T(                            \
       char* filename, T* dataset, int rows, int cols,                         \
-      struct FLANNParameters* flann_params) {                                 \
+      const FLANNParameters* flann_params) {                                  \
     return _flann_load_index<T>(filename, dataset, rows, cols, flann_params); \
   }
 
@@ -666,7 +670,7 @@ int __flann_find_nearest_neighbors(typename Distance::ElementType* dataset,
                                    typename Distance::ElementType* testset,
                                    int tcount, int* result,
                                    typename Distance::ResultType* dists, int nn,
-                                   FLANNParameters* flann_params,
+                                   const FLANNParameters* flann_params,
                                    Distance d = Distance()) {
   typedef typename Distance::ElementType ElementType;
   typedef typename Distance::ResultType DistanceType;
@@ -695,7 +699,7 @@ int __flann_find_nearest_neighbors(typename Distance::ElementType* dataset,
 template <typename T, typename R>
 int _flann_find_nearest_neighbors(T* dataset, int rows, int cols, T* testset,
                                   int tcount, int* result, R* dists, int nn,
-                                  FLANNParameters* flann_params) {
+                                  const FLANNParameters* flann_params) {
   if (flann_params->distance_type == FLANN_DIST_EUCLIDEAN) {
     return __flann_find_nearest_neighbors<L2<T> >(
         dataset, rows, cols, testset, tcount, result, dists, nn, flann_params);
@@ -729,7 +733,7 @@ int _flann_find_nearest_neighbors(T* dataset, int rows, int cols, T* testset,
 #define FLANN_FIND_NEAREST_NEIGHBORS(T, R)                                    \
   FLANN_EXPORT int flann_find_nearest_neighbors_##T(                          \
       T* dataset, int rows, int cols, T* testset, int trows, int* indices,    \
-      R* dists, int nn, struct FLANNParameters* flann_params) {               \
+      R* dists, int nn, const FLANNParameters* flann_params) {                \
     return _flann_find_nearest_neighbors(dataset, rows, cols, testset, trows, \
                                          indices, dists, nn, flann_params);   \
   }
@@ -738,7 +742,7 @@ template <typename Distance>
 int __flann_find_nearest_neighbors_index(
     flann_index_t index_ptr, typename Distance::ElementType* testset,
     int tcount, int* result, typename Distance::ResultType* dists, int nn,
-    FLANNParameters* flann_params) {
+    const FLANNParameters* flann_params) {
   typedef typename Distance::ElementType ElementType;
   typedef typename Distance::ResultType DistanceType;
 
@@ -768,7 +772,8 @@ int __flann_find_nearest_neighbors_index(
 template <typename T, typename R>
 int _flann_find_nearest_neighbors_index(flann_index_t index_ptr, T* testset,
                                         int tcount, int* result, R* dists,
-                                        int nn, FLANNParameters* flann_params) {
+                                        int nn,
+                                        const FLANNParameters* flann_params) {
   if (flann_params->distance_type == FLANN_DIST_EUCLIDEAN) {
     return __flann_find_nearest_neighbors_index<L2<T> >(
         index_ptr, testset, tcount, result, dists, nn, flann_params);
@@ -801,7 +806,7 @@ int _flann_find_nearest_neighbors_index(flann_index_t index_ptr, T* testset,
 #define FLANN_FIND_NEAREST_NEIGHBORS_INDEX(T, R)                             \
   FLANN_EXPORT int flann_find_nearest_neighbors_index_##T(                   \
       flann_index_t index_id, T* testset, int trows, int* indices, R* dists, \
-      int nn, struct FLANNParameters* flann_params) {                        \
+      int nn, const FLANNParameters* flann_params) {                         \
     return _flann_find_nearest_neighbors_index(                              \
         index_id, testset, trows, indices, dists, nn, flann_params);         \
   }
@@ -810,7 +815,7 @@ template <typename Distance>
 int __flann_radius_search(flann_index_t index_ptr,
                           typename Distance::ElementType* query, int* indices,
                           typename Distance::ResultType* dists, int max_nn,
-                          float radius, FLANNParameters* flann_params) {
+                          float radius, const FLANNParameters* flann_params) {
   typedef typename Distance::ElementType ElementType;
   typedef typename Distance::ResultType DistanceType;
 
@@ -838,7 +843,7 @@ int __flann_radius_search(flann_index_t index_ptr,
 template <typename T, typename R>
 int _flann_radius_search(flann_index_t index_ptr, T* query, int* indices,
                          R* dists, int max_nn, float radius,
-                         FLANNParameters* flann_params) {
+                         const FLANNParameters* flann_params) {
   if (flann_params->distance_type == FLANN_DIST_EUCLIDEAN) {
     return __flann_radius_search<L2<T> >(index_ptr, query, indices, dists,
                                          max_nn, radius, flann_params);
@@ -871,13 +876,14 @@ int _flann_radius_search(flann_index_t index_ptr, T* query, int* indices,
 #define FLANN_RADIUS_SEARCH(T, R)                                            \
   FLANN_EXPORT int flann_radius_search_##T(                                  \
       flann_index_t index_ptr, T* query, int* indices, R* dists, int max_nn, \
-      float radius, struct FLANNParameters* flann_params) {                  \
+      float radius, const FLANNParameters* flann_params) {                   \
     return _flann_radius_search(index_ptr, query, indices, dists, max_nn,    \
                                 radius, flann_params);                       \
   }
 
 template <typename Distance>
-int __flann_free_index(flann_index_t index_ptr, FLANNParameters* flann_params) {
+int __flann_free_index(flann_index_t index_ptr,
+                       const FLANNParameters* flann_params) {
   try {
     init_flann_parameters(flann_params);
     if (index_ptr == NULL) {
@@ -894,7 +900,8 @@ int __flann_free_index(flann_index_t index_ptr, FLANNParameters* flann_params) {
 }
 
 template <typename T>
-int _flann_free_index(flann_index_t index_ptr, FLANNParameters* flann_params) {
+int _flann_free_index(flann_index_t index_ptr,
+                      const FLANNParameters* flann_params) {
   if (flann_params->distance_type == FLANN_DIST_EUCLIDEAN) {
     return __flann_free_index<L2<T> >(index_ptr, flann_params);
   } else if (flann_params->distance_type == FLANN_DIST_MANHATTAN) {
@@ -918,17 +925,17 @@ int _flann_free_index(flann_index_t index_ptr, FLANNParameters* flann_params) {
   }
 }
 
-#define FLANN_FREE_INDEX(T, R)                                        \
-  FLANN_EXPORT int flann_free_index_##T(                              \
-      flann_index_t index_id, struct FLANNParameters* flann_params) { \
-    return _flann_free_index<T>(index_id, flann_params);              \
+#define FLANN_FREE_INDEX(T, R)                                                 \
+  FLANN_EXPORT int flann_free_index_##T(flann_index_t index_id,                \
+                                        const FLANNParameters* flann_params) { \
+    return _flann_free_index<T>(index_id, flann_params);                       \
   }
 
 template <typename Distance>
 int __flann_compute_cluster_centers(typename Distance::ElementType* dataset,
                                     int rows, int cols, int clusters,
                                     typename Distance::ResultType* result,
-                                    FLANNParameters* flann_params,
+                                    const FLANNParameters* flann_params,
                                     Distance d = Distance()) {
   typedef typename Distance::ElementType ElementType;
   typedef typename Distance::ResultType DistanceType;
@@ -953,7 +960,8 @@ int __flann_compute_cluster_centers(typename Distance::ElementType* dataset,
 
 template <typename T, typename R>
 int _flann_compute_cluster_centers(T* dataset, int rows, int cols, int clusters,
-                                   R* result, FLANNParameters* flann_params) {
+                                   R* result,
+                                   const FLANNParameters* flann_params) {
   if (flann_params->distance_type == FLANN_DIST_EUCLIDEAN) {
     return __flann_compute_cluster_centers<L2<T> >(
         dataset, rows, cols, clusters, result, flann_params);
@@ -987,7 +995,7 @@ int _flann_compute_cluster_centers(T* dataset, int rows, int cols, int clusters,
 #define FLANN_COMPUTE_CLUSTER_CENTERS(T, R)                              \
   FLANN_EXPORT int flann_compute_cluster_centers_##T(                    \
       T* dataset, int rows, int cols, int clusters, R* result,           \
-      struct FLANNParameters* flann_params) {                            \
+      const FLANNParameters* flann_params) {                             \
     return _flann_compute_cluster_centers(dataset, rows, cols, clusters, \
                                           result, flann_params);         \
   }
@@ -1015,7 +1023,7 @@ FLANN_IMPL(int16_t, float)
 FLANN_IMPL(int32_t, float)
 FLANN_IMPL(uint8_t, float)
 FLANN_IMPL(uint16_t, float)
-FLANN_IMPL(uint32_t, float)
+// FLANN_IMPL(uint32_t, float)
 
 #undef FLANN_BUILD_INDEX
 #undef FLANN_ADD_POINTS

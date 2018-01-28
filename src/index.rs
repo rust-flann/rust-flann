@@ -3,8 +3,6 @@ use Indexable;
 use Parameters;
 use raw;
 use std::marker::PhantomData;
-use std::ops::DerefMut;
-use std::sync::Mutex;
 
 type Datum<T, N> = GenericArray<T, N>;
 
@@ -12,17 +10,14 @@ pub struct Index<T: Indexable, N: ArrayLength<T>> {
     index: raw::flann_index_t,
     point_memory: Vec<Vec<T>>,
     points: Vec<Datum<T, N>>,
-    parameters: Mutex<raw::FLANNParameters>,
+    parameters: raw::FLANNParameters,
     _phantom: PhantomData<(T, N)>,
 }
 
 impl<T: Indexable, N: ArrayLength<T>> Drop for Index<T, N> {
     fn drop(&mut self) {
         unsafe {
-            T::free_index(
-                self.index,
-                self.parameters.lock().expect(LOCK_FAIL).deref_mut(),
-            );
+            T::free_index(self.index, &mut self.parameters);
         }
     }
 }
@@ -57,7 +52,7 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
             point_memory,
             points: points,
             index,
-            parameters: Mutex::new(flann_params),
+            parameters: flann_params,
             _phantom: PhantomData,
         })
     }
@@ -72,7 +67,7 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
                 1,
                 N::to_i32(),
                 rebuild_threshold.unwrap_or(2.0),
-                self.parameters.lock().expect(LOCK_FAIL).deref_mut(),
+                &self.parameters,
             )
         };
         assert_eq!(retval, 0);
@@ -93,7 +88,7 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
                 l,
                 N::to_i32(),
                 rebuild_threshold.unwrap_or(2.0),
-                self.parameters.lock().expect(LOCK_FAIL).deref_mut(),
+                &self.parameters,
             )
         };
         assert_eq!(retval, 0);
@@ -106,11 +101,7 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
     pub fn remove(&mut self, idx: usize) {
         self.points.remove(idx);
         unsafe {
-            T::remove_point(
-                self.index,
-                idx as u32,
-                self.parameters.lock().expect(LOCK_FAIL).deref_mut(),
-            );
+            T::remove_point(self.index, idx as u32, &self.parameters);
         }
     }
 
@@ -130,7 +121,7 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
                 &mut index,
                 &mut dist,
                 1,
-                self.parameters.lock().expect(LOCK_FAIL).deref_mut(),
+                &self.parameters,
             )
         };
         assert_eq!(retval, 0);
@@ -154,7 +145,7 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
                 dists.as_mut_ptr(),
                 max_nn as i32,
                 radius,
-                self.parameters.lock().expect(LOCK_FAIL).deref_mut(),
+                &self.parameters,
             )
         };
         assert!(retval >= 0);
@@ -166,5 +157,3 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
             .collect()
     }
 }
-
-static LOCK_FAIL: &'static str = "Failed to acquire lock on parameters field";

@@ -19,13 +19,13 @@ pub unsafe trait Indexable: Clone + Debug + Default {
         rows: c_int,
         columns: c_int,
         rebuild_threshold: f32,
-        flann_params: *mut FLANNParameters,
+        flann_params: *const FLANNParameters,
     ) -> c_int;
 
     unsafe fn remove_point(
         index_ptr: flann_index_t,
         point_id: c_uint,
-        flann_params: *mut FLANNParameters,
+        flann_params: *const FLANNParameters,
     ) -> c_int;
 
     unsafe fn get_point(
@@ -33,14 +33,14 @@ pub unsafe trait Indexable: Clone + Debug + Default {
         point_id: c_uint,
         point: *mut Self,
         columns: c_int,
-        flann_params: *mut FLANNParameters,
+        flann_params: *const FLANNParameters,
     ) -> c_int;
 
-    unsafe fn veclen(index_ptr: flann_index_t, flann_params: *mut FLANNParameters) -> c_uint;
+    unsafe fn veclen(index_ptr: flann_index_t, flann_params: *const FLANNParameters) -> c_uint;
 
-    unsafe fn size(index_ptr: flann_index_t, flann_params: *mut FLANNParameters) -> c_uint;
+    unsafe fn size(index_ptr: flann_index_t, flann_params: *const FLANNParameters) -> c_uint;
 
-    unsafe fn used_memory(index_ptr: flann_index_t, flann_params: *mut FLANNParameters) -> c_int;
+    unsafe fn used_memory(index_ptr: flann_index_t, flann_params: *const FLANNParameters) -> c_int;
 
     unsafe fn find_nearest_neighbors_index(
         index_id: flann_index_t,
@@ -49,7 +49,7 @@ pub unsafe trait Indexable: Clone + Debug + Default {
         indices: *mut c_int,
         dists: *mut Self::ResultType,
         nn: c_int,
-        flann_params: *mut FLANNParameters,
+        flann_params: *const FLANNParameters,
     ) -> c_int;
 
     unsafe fn radius_search(
@@ -59,7 +59,7 @@ pub unsafe trait Indexable: Clone + Debug + Default {
         dists: *mut Self::ResultType,
         max_nn: c_int,
         radius: f32,
-        flann_params: *mut FLANNParameters,
+        flann_params: *const FLANNParameters,
     ) -> c_int;
 
     unsafe fn free_index(index_id: flann_index_t, flann_params: *mut FLANNParameters) -> c_int;

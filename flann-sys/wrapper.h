@@ -1,8 +1,8 @@
 #ifndef WRAPPER_H
 #define WRAPPER_H
 
-#include <flann/defines.h>
 #include <stdint.h>
+#include "defines.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -54,63 +54,63 @@ FLANN_EXPORT extern struct FLANNParameters DEFAULT_FLANN_PARAMETERS;
 #define FLANN_ADD_POINTS(T, R)                                   \
   FLANN_EXPORT int flann_add_points_##T(                         \
       flann_index_t index_ptr, T* points, int rows, int columns, \
-      float rebuild_threshold, struct FLANNParameters* flann_params);
+      float rebuild_threshold, const struct FLANNParameters* flann_params);
 
 #define FLANN_REMOVE_POINT(T, R)                      \
   FLANN_EXPORT int flann_remove_point_##T(            \
       flann_index_t index_ptr, unsigned int point_id, \
-      struct FLANNParameters* flann_params);
+      const struct FLANNParameters* flann_params);
 
 #define FLANN_GET_POINT(T, R)                                                \
   FLANN_EXPORT int flann_get_point_##T(                                      \
       flann_index_t index_ptr, unsigned int point_id, T* point, int columns, \
-      struct FLANNParameters* flann_params);
+      const struct FLANNParameters* flann_params);
 
 #define FLANN_VECLEN(T, R)                    \
   FLANN_EXPORT unsigned int flann_veclen_##T( \
-      flann_index_t index_ptr, struct FLANNParameters* flann_params);
+      flann_index_t index_ptr, const struct FLANNParameters* flann_params);
 
 #define FLANN_SIZE(T, R)                    \
   FLANN_EXPORT unsigned int flann_size_##T( \
-      flann_index_t index_ptr, struct FLANNParameters* flann_params);
+      flann_index_t index_ptr, const struct FLANNParameters* flann_params);
 
 #define FLANN_USED_MEMORY(T, R)           \
   FLANN_EXPORT int flann_used_memory_##T( \
-      flann_index_t index_ptr, struct FLANNParameters* flann_params);
+      flann_index_t index_ptr, const struct FLANNParameters* flann_params);
 
-#define FLANN_SAVE_INDEX(T, R)                                  \
-  FLANN_EXPORT int flann_save_index_##T(flann_index_t index_id, \
-                                        char* filename,         \
-                                        struct FLANNParameters* flann_params);
+#define FLANN_SAVE_INDEX(T, R)                \
+  FLANN_EXPORT int flann_save_index_##T(      \
+      flann_index_t index_id, char* filename, \
+      const struct FLANNParameters* flann_params);
 
 #define FLANN_LOAD_INDEX(T, R)                        \
   FLANN_EXPORT flann_index_t flann_load_index_##T(    \
       char* filename, T* dataset, int rows, int cols, \
-      struct FLANNParameters* flann_params);
+      const struct FLANNParameters* flann_params);
 
 #define FLANN_FIND_NEAREST_NEIGHBORS(T, R)                                 \
   FLANN_EXPORT int flann_find_nearest_neighbors_##T(                       \
       T* dataset, int rows, int cols, T* testset, int trows, int* indices, \
-      R* dists, int nn, struct FLANNParameters* flann_params);
+      R* dists, int nn, const struct FLANNParameters* flann_params);
 
 #define FLANN_FIND_NEAREST_NEIGHBORS_INDEX(T, R)                             \
   FLANN_EXPORT int flann_find_nearest_neighbors_index_##T(                   \
       flann_index_t index_id, T* testset, int trows, int* indices, R* dists, \
-      int nn, struct FLANNParameters* flann_params);
+      int nn, const struct FLANNParameters* flann_params);
 
 #define FLANN_RADIUS_SEARCH(T, R)                                            \
   FLANN_EXPORT int flann_radius_search_##T(                                  \
       flann_index_t index_ptr, T* query, int* indices, R* dists, int max_nn, \
-      float radius, struct FLANNParameters* flann_params);
+      float radius, const struct FLANNParameters* flann_params);
 
-#define FLANN_FREE_INDEX(T, R)                                  \
-  FLANN_EXPORT int flann_free_index_##T(flann_index_t index_id, \
-                                        struct FLANNParameters* flann_params);
+#define FLANN_FREE_INDEX(T, R)           \
+  FLANN_EXPORT int flann_free_index_##T( \
+      flann_index_t index_id, const struct FLANNParameters* flann_params);
 
 #define FLANN_COMPUTE_CLUSTER_CENTERS(T, R)                    \
   FLANN_EXPORT int flann_compute_cluster_centers_##T(          \
       T* dataset, int rows, int cols, int clusters, R* result, \
-      struct FLANNParameters* flann_params);
+      const struct FLANNParameters* flann_params);
 
 #define FLANN_IMPL(T, R)                   \
   FLANN_BUILD_INDEX(T, R)                  \

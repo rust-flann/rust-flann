@@ -44,7 +44,7 @@ macro_rules! impl_index {
                 rows: c_int,
                 columns: c_int,
                 rebuild_threshold: f32,
-                flann_params: *mut FLANNParameters,
+                flann_params: *const FLANNParameters,
             ) -> c_int {
                 raw::$add_points(
                     index_ptr,
@@ -60,7 +60,7 @@ macro_rules! impl_index {
             unsafe fn remove_point(
                 index_ptr: flann_index_t,
                 point_id: c_uint,
-                flann_params: *mut FLANNParameters,
+                flann_params: *const FLANNParameters,
             ) -> c_int {
                 raw::$remove_point(index_ptr, point_id, flann_params)
             }
@@ -71,7 +71,7 @@ macro_rules! impl_index {
                 point_id: c_uint,
                 point: *mut Self,
                 columns: c_int,
-                flann_params: *mut FLANNParameters,
+                flann_params: *const FLANNParameters,
             ) -> c_int {
                 raw::$get_point(index_ptr, point_id,point,columns, flann_params)
             }
@@ -79,7 +79,7 @@ macro_rules! impl_index {
             #[inline]
             unsafe fn veclen(
                 index_ptr: flann_index_t,
-                flann_params: *mut FLANNParameters,
+                flann_params: *const FLANNParameters,
             ) -> c_uint {
                 raw::$veclen(index_ptr, flann_params)
             }
@@ -87,7 +87,7 @@ macro_rules! impl_index {
             #[inline]
             unsafe fn size(
                 index_ptr: flann_index_t,
-                flann_params: *mut FLANNParameters,
+                flann_params: *const FLANNParameters,
             ) -> c_uint {
                 raw::$size(index_ptr, flann_params)
             }
@@ -95,7 +95,7 @@ macro_rules! impl_index {
             #[inline]
             unsafe fn used_memory(
                 index_ptr: flann_index_t,
-                flann_params: *mut FLANNParameters,
+                flann_params: *const FLANNParameters,
             ) -> c_int {
                 raw::$used_memory(index_ptr, flann_params)
             }
@@ -108,7 +108,7 @@ macro_rules! impl_index {
                 indices: *mut c_int,
                 dists: *mut Self::ResultType,
                 nn: c_int,
-                flann_params: *mut FLANNParameters,
+                flann_params: *const FLANNParameters,
             ) -> c_int {
                 raw::$find_nearest_neighbors_index(
                     index_id,
@@ -129,7 +129,7 @@ macro_rules! impl_index {
                 dists: *mut Self::ResultType,
                 max_nn: c_int,
                 radius: f32,
-                flann_params: *mut FLANNParameters,
+                flann_params: *const FLANNParameters,
             ) -> c_int {
                 raw::$radius_search(
                     index_ptr,
