@@ -96,6 +96,42 @@ fn nearest_neighbor_returns_correct_item() {
 }
 
 #[test]
+fn nearest_neighbors_returns_correct_item() {
+    type Point2 = Index::<f32, typenum::U2>;
+    let data = vec![
+            arr![f32; 413, 800],
+            arr![f32; 256, 755],
+            arr![f32; 843, 586],
+            arr![f32; 922, 823],
+            arr![f32; 724, 789],
+            arr![f32; 252, 39],
+            arr![f32; 350, 369],
+            arr![f32; 339, 247],
+            arr![f32; 212, 653],
+            arr![f32; 881, 714], ];
+    let mut index = Point2::new(
+        vec![
+            Default::default(),
+        ],
+        Parameters::default(),
+    ).unwrap();
+    for v in data.clone() {
+        index.add(v, None);
+    }
+    let (res1, res2) = index.find_nearest_neighbors(&data,3);
+    
+    //[1, 2, 9, 2, 9, 1, 3, 10, 5, 4, 5, 10, 5, 4, 10, 6, 8, 0, 7, 8, 9, 8, 7, 6, 9, 2, 1, 10, 3, 5]
+    //[0, 26674, 62010, 0, 12340, 26674, 0, 17828, 55370, 0, 27490, 46628, 0, 27490, 30274, 0, 50833, 65025, 0, 15005, 99700, 0, 15005, 50833, 0, 12340, 62010, 0, 17828, 30274]
+    assert_eq!(res1[0], 1); assert_eq!(res1[1], 2); assert_eq!(res1[2], 9);
+    assert_eq!(res1[3], 2); assert_eq!(res1[4], 9); assert_eq!(res1[5], 1);
+    assert_eq!(res1[6], 3); assert_eq!(res1[7], 10); assert_eq!(res1[8], 5);
+
+    assert_eq!(res2[0], 0f32);
+    assert_eq!(res2[1], 26674f32);
+    assert_eq!(res2[2], 62010f32);
+}
+
+#[test]
 fn search_radius_returns_correct_item() {
     let index = Index::<f32, typenum::U3>::new(
         vec![
