@@ -1,5 +1,6 @@
 use generic_array::{ArrayLength, GenericArray};
 use Indexable;
+use itertools::Itertools;
 use Parameters;
 use raw;
 use std::marker::PhantomData;
@@ -130,20 +131,21 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
 
     pub fn find_nearest_neighbors(
         &self,
-        point: &Vec<Datum<T, N>>,
-        num: usize,
-    ) -> (Vec<i32>, Vec<T::ResultType>) {
-        let mut data_raw = point
+        points: &Vec<Datum<T, N>>,
+        mut num: usize,
+    ) -> Vec<Vec<(usize, T::ResultType)>> {
+        num = num.min(self.count());
+        let mut data_raw = points
             .iter()
             .flat_map(|v| v.iter().cloned())
             .collect::<Vec<T>>();
-        let mut index: Vec<i32> = vec![0; point.len() * num];
-        let mut dist: Vec<T::ResultType> = vec![T::ResultType::default(); point.len() * num];
+        let mut index: Vec<i32> = vec![0; points.len() * num];
+        let mut dist: Vec<T::ResultType> = vec![T::ResultType::default(); points.len() * num];
         let retval = unsafe {
             T::find_nearest_neighbors_index(
                 self.index,
                 data_raw.as_mut_ptr(),
-                point.len() as i32,
+                points.len() as i32,
                 index.as_mut_ptr(),
                 dist.as_mut_ptr(),
                 num as i32,
@@ -151,7 +153,11 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
             )
         };
         assert_eq!(retval, 0);
-        (index, dist)
+        izip!(index.into_iter().map(|v| v as usize), dist)
+            .chunks(num)
+            .into_iter()
+            .map(Iterator::collect)
+            .collect()
     }
 
     pub fn search_radius(

@@ -3,6 +3,8 @@
 #[allow(unknown_lints, useless_attribute, unused_imports)]
 #[macro_use]
 extern crate generic_array;
+#[macro_use]
+extern crate itertools;
 pub extern crate flann_sys as raw;
 
 mod enums;

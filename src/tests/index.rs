@@ -114,23 +114,63 @@ fn nearest_neighbors_returns_correct_item() {
     for v in data.clone() {
         index.add(v, None);
     }
-    let (res1, res2) = index.find_nearest_neighbors(&data, 3);
+    let res = index.find_nearest_neighbors(&data, 3);
 
-    //[1, 2, 9, 2, 9, 1, 3, 10, 5, 4, 5, 10, 5, 4, 10, 6, 8, 0, 7, 8, 9, 8, 7, 6, 9, 2, 1, 10, 3, 5]
-    //[0, 26674, 62010, 0, 12340, 26674, 0, 17828, 55370, 0, 27490, 46628, 0, 27490, 30274, 0, 50833, 65025, 0, 15005, 99700, 0, 15005, 50833, 0, 12340, 62010, 0, 17828, 30274]
-    assert_eq!(res1[0], 1);
-    assert_eq!(res1[1], 2);
-    assert_eq!(res1[2], 9);
-    assert_eq!(res1[3], 2);
-    assert_eq!(res1[4], 9);
-    assert_eq!(res1[5], 1);
-    assert_eq!(res1[6], 3);
-    assert_eq!(res1[7], 10);
-    assert_eq!(res1[8], 5);
+    assert_eq!(res.len(), 10);
 
-    assert_eq!(res2[0], 0f32);
-    assert_eq!(res2[1], 26674f32);
-    assert_eq!(res2[2], 62010f32);
+    // indices: [
+    //     [1, 2, 9],
+    //     [2, 9, 1],
+    //     [3, 10, 5],
+    //     [4, 5, 10],
+    //     [5, 4, 10],
+    //     [6, 8, 0],
+    //     [7, 8, 9],
+    //     [8, 7, 6],
+    //     [9, 2, 1],
+    //     [10, 3, 5],
+    // ]
+    // distances: [
+    //     [0.0, 26674.0, 62010.0],
+    //     [0.0, 12340.0, 26674.0],
+    //     [0.0, 17828.0, 55370.0],
+    //     [0.0, 27490.0, 46628.0],
+    //     [0.0, 27490.0, 30274.0],
+    //     [0.0, 50833.0, 65025.0],
+    //     [0.0, 15005.0, 99700.0],
+    //     [0.0, 15005.0, 50833.0],
+    //     [0.0, 12340.0, 62010.0],
+    //     [0.0, 17828.0, 30274.0],
+    // ]
+    assert_eq!(res[0][0].0, 1);
+    assert_eq!(res[0][1].0, 2);
+    assert_eq!(res[0][2].0, 9);
+    assert_eq!(res[1][0].0, 2);
+    assert_eq!(res[1][1].0, 9);
+    assert_eq!(res[1][2].0, 1);
+    assert_eq!(res[2][0].0, 3);
+    assert_eq!(res[2][1].0, 10);
+    assert_eq!(res[2][2].0, 5);
+
+    assert_eq!(res[0][0].1, 0f32);
+    assert_eq!(res[0][1].1, 26674f32);
+    assert_eq!(res[0][2].1, 62010f32);
+}
+
+#[test]
+fn nearest_neighbors_get_truncated() {
+    type Point2 = Index<f32, typenum::U2>;
+    let data = vec![arr![f32; 0, 0], arr![f32; 1, 1], arr![f32; 2, 2]];
+    let index = Point2::new(
+        vec![Default::default(), Default::default()],
+        Parameters::default(),
+    ).unwrap();
+    let res = index.find_nearest_neighbors(&data, 4);
+
+    assert_eq!(res.len(), 3);
+    assert_eq!(res[0].len(), 2);
+    assert_eq!(res[1].len(), 2);
+    assert_eq!(res[2].len(), 2);
 }
 
 #[test]
