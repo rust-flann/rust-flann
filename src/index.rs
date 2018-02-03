@@ -128,10 +128,17 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
         (index as usize, dist)
     }
 
-    pub fn find_nearest_neighbors(&self, point: &Vec<Datum<T, N>>, num:usize) -> (Vec<i32>, Vec<T::ResultType>) {
-        let mut data_raw = point.iter().flat_map(|v| v.iter().cloned()).collect::<Vec<T>>();
-        let mut index:Vec<i32> = vec![0; point.len()*num];
-        let mut dist:Vec<T::ResultType> = vec![T::ResultType::default(); point.len()*num];
+    pub fn find_nearest_neighbors(
+        &self,
+        point: &Vec<Datum<T, N>>,
+        num: usize,
+    ) -> (Vec<i32>, Vec<T::ResultType>) {
+        let mut data_raw = point
+            .iter()
+            .flat_map(|v| v.iter().cloned())
+            .collect::<Vec<T>>();
+        let mut index: Vec<i32> = vec![0; point.len() * num];
+        let mut dist: Vec<T::ResultType> = vec![T::ResultType::default(); point.len() * num];
         let retval = unsafe {
             T::find_nearest_neighbors_index(
                 self.index,
