@@ -12,11 +12,13 @@ mod index;
 mod indexable;
 mod indices;
 mod parameters;
+mod vec_index;
 #[cfg(test)]
 mod tests;
 
 pub use enums::{Algorithm, CentersInit, Checks, DistanceType, LogLevel};
 pub use generic_array::typenum;
 pub use index::Index;
+pub use vec_index::VecIndex;
 pub use indexable::Indexable;
 pub use parameters::Parameters;

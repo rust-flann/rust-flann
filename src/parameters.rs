@@ -49,9 +49,8 @@ impl Parameters {
             leaf_max_size: v.leaf_max_size,
             branching: v.branching,
             iterations: v.iterations,
-            centers_init: CentersInit::from_raw(v.centers_init).ok_or_else(|| {
-                format!("Illegal centers init enum value: {}", v.centers_init)
-            })?,
+            centers_init: CentersInit::from_raw(v.centers_init)
+                .ok_or_else(|| format!("Illegal centers init enum value: {}", v.centers_init))?,
             cb_index: v.cb_index,
             target_precision: v.target_precision,
             build_weight: v.build_weight,
@@ -63,9 +62,8 @@ impl Parameters {
             log_level: LogLevel::from_raw(v.log_level)
                 .ok_or_else(|| format!("Illegal log level enum value: {}", v.log_level))?,
             random_seed: v.random_seed,
-            distance_type: DistanceType::from_raw(v.distance_type).ok_or_else(|| {
-                format!("Illegal distanc etype enum value: {}", v.log_level)
-            })?,
+            distance_type: DistanceType::from_raw(v.distance_type)
+                .ok_or_else(|| format!("Illegal distanc etype enum value: {}", v.log_level))?,
             distance_order: v.distance_order,
         })
     }

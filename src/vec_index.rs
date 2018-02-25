@@ -1,21 +1,20 @@
-use generic_array::{ArrayLength, GenericArray};
 use Indexable;
 use itertools::Itertools;
 use Parameters;
 use raw;
-use std::marker::PhantomData;
 
-type Datum<T, N> = GenericArray<T, N>;
+type Datum<T> = Vec<T>;
 
-pub struct Index<T: Indexable, N: ArrayLength<T>> {
+pub struct VecIndex<T: Indexable> {
     index: raw::flann_index_t,
     point_memory: Vec<Vec<T>>,
-    points: Vec<Datum<T, N>>,
+    points: Vec<Datum<T>>,
     parameters: raw::FLANNParameters,
-    _phantom: PhantomData<(T, N)>,
+    datum_length: usize,
+    datum_length_i32: i32,
 }
 
-impl<T: Indexable, N: ArrayLength<T>> Drop for Index<T, N> {
+impl<T: Indexable> Drop for VecIndex<T> {
     fn drop(&mut self) {
         unsafe {
             T::free_index(self.index, &mut self.parameters);
@@ -23,10 +22,17 @@ impl<T: Indexable, N: ArrayLength<T>> Drop for Index<T, N> {
     }
 }
 
-impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
-    pub fn new(points: Vec<Datum<T, N>>, parameters: Parameters) -> Option<Self> {
+impl<T: Indexable> VecIndex<T> {
+    pub fn new(
+        datum_length: usize,
+        points: Vec<Datum<T>>,
+        parameters: Parameters,
+    ) -> Result<Self, &'static str> {
         if points.is_empty() {
-            return None;
+            return Err("Initial set of points cannot be empty");
+        }
+        if points.iter().any(|datum| datum.len() != datum_length) {
+            return Err("All points need to have the desired number of coordinates");
         }
         let mut point_memory = Vec::new();
         point_memory.push(
@@ -35,30 +41,39 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
                 .flat_map(|v| v.iter().cloned())
                 .collect::<Vec<T>>(),
         );
+        let datum_length_i32 = datum_length as i32;
         let mut speedup = 0.0;
         let mut flann_params = parameters.into();
         let index = unsafe {
             T::build_index(
                 point_memory.last_mut().unwrap().as_mut_ptr(),
                 points.len() as i32,
-                N::to_i32(),
+                datum_length_i32,
                 &mut speedup,
                 &mut flann_params,
             )
         };
         if index.is_null() {
-            return None;
+            return Err("FLANN's C bindings failed to initialize index");
         }
-        Some(Self {
+        Ok(Self {
             point_memory,
             points: points,
             index,
             parameters: flann_params,
-            _phantom: PhantomData,
+            datum_length,
+            datum_length_i32,
         })
     }
 
-    pub fn add(&mut self, point: Datum<T, N>, rebuild_threshold: Option<f32>) {
+    pub fn add(
+        &mut self,
+        point: Datum<T>,
+        rebuild_threshold: Option<f32>,
+    ) -> Result<(), &'static str> {
+        if point.len() != self.datum_length {
+            return Err("Entry doesn't have the desired number of coordinates");
+        }
         self.point_memory.push(point.iter().cloned().collect());
         self.points.push(point);
         let retval = unsafe {
@@ -66,17 +81,25 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
                 self.index,
                 self.point_memory.last_mut().unwrap().as_mut_ptr(),
                 1,
-                N::to_i32(),
+                self.datum_length_i32,
                 rebuild_threshold.unwrap_or(2.0),
                 &self.parameters,
             )
         };
         assert_eq!(retval, 0);
+        Ok(())
     }
 
-    pub fn add_multiple(&mut self, mut points: Vec<Datum<T, N>>, rebuild_threshold: Option<f32>) {
+    pub fn add_multiple(
+        &mut self,
+        mut points: Vec<Datum<T>>,
+        rebuild_threshold: Option<f32>,
+    ) -> Result<(), &'static str> {
         if points.is_empty() {
-            return;
+            return Ok(());
+        }
+        if points.iter().any(|datum| datum.len() != self.datum_length) {
+            return Err("All points need to have the desired number of coordinates");
         }
         self.point_memory
             .push(points.iter().flat_map(|v| v.iter().cloned()).collect());
@@ -87,15 +110,16 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
                 self.index,
                 self.point_memory.last_mut().unwrap().as_mut_ptr(),
                 l,
-                N::to_i32(),
+                self.datum_length_i32,
                 rebuild_threshold.unwrap_or(2.0),
                 &self.parameters,
             )
         };
         assert_eq!(retval, 0);
+        Ok(())
     }
 
-    pub fn get(&self, idx: usize) -> Option<&Datum<T, N>> {
+    pub fn get(&self, idx: usize) -> Option<&Datum<T>> {
         self.points.get(idx)
     }
 
@@ -110,7 +134,13 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
         self.points.len()
     }
 
-    pub fn find_nearest_neighbor(&self, point: &Datum<T, N>) -> (usize, T::ResultType) {
+    pub fn find_nearest_neighbor(
+        &self,
+        point: &Datum<T>,
+    ) -> Result<(usize, T::ResultType), &'static str> {
+        if point.len() != self.datum_length {
+            return Err("Entry doesn't have the desired number of coordinates");
+        }
         let mut data_raw = point.iter().cloned().collect::<Vec<T>>();
         let mut index = 0;
         let mut dist = T::ResultType::default();
@@ -126,16 +156,19 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
             )
         };
         assert_eq!(retval, 0);
-        (index as usize, dist)
+        Ok((index as usize, dist))
     }
 
     pub fn find_nearest_neighbors(
         &self,
-        points: &Vec<Datum<T, N>>,
+        points: &Vec<Datum<T>>,
         mut num: usize,
-    ) -> Vec<Vec<(usize, T::ResultType)>> {
+    ) -> Result<Vec<Vec<(usize, T::ResultType)>>, &'static str> {
         if points.is_empty() {
-            return Vec::new();
+            return Ok(Vec::new());
+        }
+        if points.iter().any(|datum| datum.len() != self.datum_length) {
+            return Err("All points need to have the desired number of coordinates");
         }
         num = num.min(self.count());
         let mut data_raw = points
@@ -156,19 +189,22 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
             )
         };
         assert_eq!(retval, 0);
-        izip!(index.into_iter().map(|v| v as usize), dist)
+        Ok(izip!(index.into_iter().map(|v| v as usize), dist)
             .chunks(num)
             .into_iter()
             .map(Iterator::collect)
-            .collect()
+            .collect())
     }
 
     pub fn search_radius(
         &self,
-        point: &Datum<T, N>,
+        point: &Datum<T>,
         radius: f32,
         max_nn: usize,
-    ) -> Vec<(usize, T::ResultType)> {
+    ) -> Result<Vec<(usize, T::ResultType)>, &'static str> {
+        if point.len() != self.datum_length {
+            return Err("Entry doesn't have the desired number of coordinates");
+        }
         let mut data_raw = point.iter().cloned().collect::<Vec<T>>();
         let mut indices = vec![0; max_nn];
         let mut dists = vec![T::ResultType::default(); max_nn];
@@ -184,11 +220,11 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
             )
         };
         assert!(retval >= 0);
-        indices
+        Ok(indices
             .into_iter()
             .map(|v| v as usize)
             .zip(dists.into_iter())
             .take(retval as usize)
-            .collect()
+            .collect())
     }
 }
