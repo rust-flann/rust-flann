@@ -25,7 +25,7 @@ macro_rules! convertable_enum {
     }
 }
 
-convertable_enum!(Algorithm; u32;
+convertable_enum!(Algorithm; i32;
     Linear = raw::flann_algorithm_t_FLANN_INDEX_LINEAR,
     KDTree = raw::flann_algorithm_t_FLANN_INDEX_KDTREE,
     KMeans = raw::flann_algorithm_t_FLANN_INDEX_KMEANS,
@@ -37,13 +37,13 @@ convertable_enum!(Algorithm; u32;
     Autotuned = raw::flann_algorithm_t_FLANN_INDEX_AUTOTUNED,
 );
 
-convertable_enum!(CentersInit; u32;
+convertable_enum!(CentersInit; i32;
     Random = raw::flann_centers_init_t_FLANN_CENTERS_RANDOM,
     Gonzales = raw::flann_centers_init_t_FLANN_CENTERS_GONZALES,
     KMeansPP = raw::flann_centers_init_t_FLANN_CENTERS_KMEANSPP,
 );
 
-convertable_enum!(LogLevel; u32;
+convertable_enum!(LogLevel; i32;
     None = raw::flann_log_level_t_FLANN_LOG_NONE,
     Fatal = raw::flann_log_level_t_FLANN_LOG_FATAL,
     Error = raw::flann_log_level_t_FLANN_LOG_ERROR,
@@ -52,7 +52,7 @@ convertable_enum!(LogLevel; u32;
     Debug = raw::flann_log_level_t_FLANN_LOG_DEBUG,
 );
 
-convertable_enum!(DistanceType; u32;
+convertable_enum!(DistanceType; i32;
     Euclidean = raw::flann_distance_t_FLANN_DIST_EUCLIDEAN,
     L2 = raw::flann_distance_t_FLANN_DIST_L2,
     Manhattan = raw::flann_distance_t_FLANN_DIST_MANHATTAN,
@@ -85,8 +85,8 @@ impl Checks {
         }
     }
 
-    pub fn as_raw(&self) -> i32 {
-        match *self {
+    pub fn as_raw(self) -> i32 {
+        match self {
             Checks::Unlimited => raw::flann_checks_t_FLANN_CHECKS_UNLIMITED,
             Checks::Autotuned => raw::flann_checks_t_FLANN_CHECKS_AUTOTUNED,
             Checks::Exact(v) => v,

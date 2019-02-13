@@ -1,9 +1,9 @@
 use generic_array::{ArrayLength, GenericArray};
-use Indexable;
 use itertools::Itertools;
-use Parameters;
 use raw;
 use std::marker::PhantomData;
+use Indexable;
+use Parameters;
 
 type Datum<T, N> = GenericArray<T, N>;
 
@@ -131,7 +131,7 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
 
     pub fn find_nearest_neighbors(
         &self,
-        points: &Vec<Datum<T, N>>,
+        points: &[Datum<T, N>],
         mut num: usize,
     ) -> Vec<Vec<(usize, T::ResultType)>> {
         if points.is_empty() {

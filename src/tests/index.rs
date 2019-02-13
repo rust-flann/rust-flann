@@ -152,9 +152,9 @@ fn nearest_neighbors_returns_correct_item() {
     assert_eq!(res[2][1].0, 10);
     assert_eq!(res[2][2].0, 5);
 
-    assert_eq!(res[0][0].1, 0f32);
-    assert_eq!(res[0][1].1, 26674f32);
-    assert_eq!(res[0][2].1, 62010f32);
+    assert_approx_eq!(res[0][0].1, 0f32);
+    assert_approx_eq!(res[0][1].1, 26674f32);
+    assert_approx_eq!(res[0][2].1, 62010f32);
 }
 
 #[test]

@@ -1,5 +1,5 @@
-use raw;
 use enums::{Algorithm, CentersInit, Checks, DistanceType, LogLevel};
+use raw;
 
 #[derive(Debug, Clone)]
 pub struct Parameters {
@@ -23,7 +23,7 @@ pub struct Parameters {
     pub key_size: u32,
     pub multi_probe_level: u32,
     pub log_level: LogLevel,
-    pub random_seed: i64,
+    pub random_seed: i32,
     pub distance_type: DistanceType,
     pub distance_order: i32,
 }
