@@ -1,10 +1,11 @@
+use itertools::{IntoChunks, Itertools};
 use raw;
 use Indexable;
 use Parameters;
 
 const DEFAULT_REBUILD_THRESHOLD: f32 = 2.0;
 
-#[derive(Fail, Debug)]
+#[derive(Copy, Clone, Debug, Fail)]
 pub enum FlannError {
     #[fail(
         display = "expected {} dimensions in point, but got {} dimensions",
@@ -20,13 +21,12 @@ pub enum FlannError {
     FailedToBuildIndex,
     #[fail(display = "input must have at least one point")]
     ZeroInputPoints,
-    #[fail(display = "didnt find any nearest neighbors when at least one should be found")]
-    NoOutput,
 }
 
+#[derive(Copy, Clone, Debug)]
 pub struct Neighbor<D> {
     pub index: usize,
-    pub distance: D,
+    pub distance_squared: D,
 }
 
 pub struct SliceIndex<'a, T: Indexable> {
@@ -121,7 +121,7 @@ impl<'a, T: Indexable> SliceIndex<'a, T> {
     ///
     /// To prevent the index from becoming unbalanced, it rebuilds after adding
     /// `rebuild_theshold` points. This defaults to `2.0`.
-    pub fn add_multiple_slices(
+    pub fn add_many_slices(
         &mut self,
         points: &'a [T],
         rebuild_threshold: impl Into<Option<f32>>,
@@ -203,25 +203,22 @@ impl<'a, T: Indexable> SliceIndex<'a, T> {
             });
         }
         let mut index = -1;
-        let mut distance = T::ResultType::default();
+        let mut distance_squared = T::ResultType::default();
         let retval = unsafe {
             T::find_nearest_neighbors_index(
                 self.index,
                 point.as_ptr() as *mut T,
                 1,
                 &mut index,
-                &mut distance,
+                &mut distance_squared,
                 1,
                 &self.parameters,
             )
         };
         assert_eq!(retval, 0);
-        if index == -1 {
-            return Err(FlannError::NoOutput);
-        }
         Ok(Neighbor {
             index: index as usize,
-            distance,
+            distance_squared,
         })
     }
 
@@ -240,27 +237,25 @@ impl<'a, T: Indexable> SliceIndex<'a, T> {
         }
         let num = num.min(self.len());
         let mut indices: Vec<i32> = vec![-1; num];
-        let mut distances: Vec<T::ResultType> = vec![T::ResultType::default(); num];
+        let mut distances_squared: Vec<T::ResultType> = vec![T::ResultType::default(); num];
         let retval = unsafe {
             T::find_nearest_neighbors_index(
                 self.index,
                 point.as_ptr() as *mut T,
                 1,
                 indices.as_mut_ptr(),
-                distances.as_mut_ptr(),
+                distances_squared.as_mut_ptr(),
                 num as i32,
                 &self.parameters,
             )
         };
         assert_eq!(retval, 0);
-        Ok(indices
-            .into_iter()
-            .zip(distances.into_iter())
-            .filter(|&(ix, _)| ix != -1)
-            .map(|(index, distance)| Neighbor {
+        Ok(indices.into_iter().zip(distances_squared.into_iter()).map(
+            |(index, distance_squared)| Neighbor {
                 index: index as usize,
-                distance,
-            }))
+                distance_squared,
+            },
+        ))
     }
 
     /// Performs k-NN search for `num` neighbors, limiting the search to `radius` distance.
@@ -281,26 +276,26 @@ impl<'a, T: Indexable> SliceIndex<'a, T> {
         }
         let num = num.min(self.len());
         let mut indices: Vec<i32> = vec![-1; num];
-        let mut distances: Vec<T::ResultType> = vec![T::ResultType::default(); num];
+        let mut distances_squared: Vec<T::ResultType> = vec![T::ResultType::default(); num];
         let retval = unsafe {
             T::radius_search(
                 self.index,
                 point.as_ptr() as *mut T,
                 indices.as_mut_ptr(),
-                distances.as_mut_ptr(),
+                distances_squared.as_mut_ptr(),
                 num as i32,
                 radius,
                 &self.parameters,
             )
         };
-        assert_eq!(retval, 0);
+        assert!(retval >= 0);
         Ok(indices
             .into_iter()
-            .zip(distances.into_iter())
-            .filter(|&(ix, _)| ix != -1)
-            .map(|(index, distance)| Neighbor {
+            .zip(distances_squared.into_iter())
+            .take(retval as usize)
+            .map(|(index, distance_squared)| Neighbor {
                 index: index as usize,
-                distance,
+                distance_squared,
             }))
     }
 
@@ -318,7 +313,7 @@ impl<'a, T: Indexable> SliceIndex<'a, T> {
         &self,
         num: usize,
         points: I,
-    ) -> Result<impl Iterator<Item = Neighbor<T::ResultType>>, FlannError>
+    ) -> Result<IntoChunks<impl Iterator<Item = Neighbor<T::ResultType>>>, FlannError>
     where
         I: IntoIterator<Item = P>,
         P: IntoIterator<Item = T>,
@@ -354,22 +349,19 @@ impl<'a, T: Indexable> SliceIndex<'a, T> {
         &self,
         num: usize,
         points: &[T],
-    ) -> Result<impl Iterator<Item = Neighbor<T::ResultType>>, FlannError> {
-        let neighbor_from_index_distance = |(index, distance)| Neighbor {
+    ) -> Result<IntoChunks<impl Iterator<Item = Neighbor<T::ResultType>>>, FlannError> {
+        let neighbor_from_index_distance = |(index, distance_squared)| Neighbor {
             index: index as usize,
-            distance,
+            distance_squared,
         };
-        fn index_filter<N>(&(ix, _): &(i32, N)) -> bool {
-            ix != -1
-        }
         if points.is_empty() {
             let indices: Vec<i32> = Vec::new();
             let distances: Vec<T::ResultType> = Vec::new();
             return Ok(indices
                 .into_iter()
                 .zip(distances.into_iter())
-                .filter(index_filter)
-                .map(neighbor_from_index_distance));
+                .map(neighbor_from_index_distance)
+                .chunks(num));
         }
         if points.len() % self.point_len != 0 {
             return Err(FlannError::InvalidFlatPointsLen {
@@ -380,14 +372,15 @@ impl<'a, T: Indexable> SliceIndex<'a, T> {
         let num = num.min(self.len());
         let total_points = points.len() / self.point_len;
         let mut indices: Vec<i32> = vec![-1; num * total_points];
-        let mut distances: Vec<T::ResultType> = vec![T::ResultType::default(); num * total_points];
+        let mut distances_squared: Vec<T::ResultType> =
+            vec![T::ResultType::default(); num * total_points];
         let retval = unsafe {
             T::find_nearest_neighbors_index(
                 self.index,
                 points.as_ptr() as *mut T,
                 total_points as i32,
                 indices.as_mut_ptr(),
-                distances.as_mut_ptr(),
+                distances_squared.as_mut_ptr(),
                 num as i32,
                 &self.parameters,
             )
@@ -395,8 +388,8 @@ impl<'a, T: Indexable> SliceIndex<'a, T> {
         assert_eq!(retval, 0);
         Ok(indices
             .into_iter()
-            .zip(distances.into_iter())
-            .filter(index_filter)
-            .map(neighbor_from_index_distance))
+            .zip(distances_squared.into_iter())
+            .map(neighbor_from_index_distance)
+            .chunks(num))
     }
 }

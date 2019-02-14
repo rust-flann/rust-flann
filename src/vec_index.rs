@@ -73,14 +73,16 @@ impl<T: Indexable> VecIndex<T> {
         self.slice_index.as_mut().unwrap().add_slice(
             unsafe { std::mem::transmute(&point[..]) },
             rebuild_threshold,
-        )
+        )?;
+        self.storage.push(point);
+        Ok(())
     }
 
     /// Adds multiple points to the index.
     ///
     /// To prevent the index from becoming unbalanced, it rebuilds after adding
     /// `rebuild_theshold` points. This defaults to `2.0`.
-    pub fn add_multiple<I, P>(
+    pub fn add_many<I, P>(
         &mut self,
         points: I,
         rebuild_threshold: impl Into<Option<f32>>,
@@ -99,7 +101,7 @@ impl<T: Indexable> VecIndex<T> {
                 });
             }
         }
-        self.add_multiple_slices(
+        self.add_many_slices(
             unsafe { std::mem::transmute(&points_vec[..]) },
             rebuild_threshold,
         )?;

@@ -7,11 +7,11 @@ fn builds_and_adds() {
     assert_eq!(index.len(), 5);
     index.add(vec![0.0; 3], None).unwrap();
     assert_eq!(index.len(), 6);
-    index.add_multiple_slices(&[], None).unwrap();
+    index.add_many_slices(&[], None).unwrap();
     assert_eq!(index.len(), 6);
-    index.add_multiple(vec![vec![0.0; 3]; 4], None).unwrap();
+    index.add_many(vec![vec![0.0; 3]; 4], None).unwrap();
     assert_eq!(index.len(), 10);
-    index.add_multiple_slices(&[0.0; 3 * 4], None).unwrap();
+    index.add_many_slices(&[0.0; 3 * 4], None).unwrap();
     assert_eq!(index.len(), 14);
 }
 
@@ -32,10 +32,10 @@ fn get_accesses_right_item() {
 
     index.add_slice(&[16.0, 17.0, 18.0], None).unwrap();
 
-    index.add_multiple_slices(&[], None).unwrap();
+    index.add_many_slices(&[], None).unwrap();
 
     index
-        .add_multiple(
+        .add_many(
             vec![
                 vec![19.0, 20.0, 21.0],
                 vec![22.0, 23.0, 24.0],
@@ -217,51 +217,49 @@ fn nearest_neighbors_returns_correct_item() {
         vec![212.0, 653.0],
         vec![881.0, 714.0],
     ];
-    let mut index = Point2::new(2, vec![vec![0.0; 2]], Parameters::default()).unwrap();
-    for v in data.clone() {
-        index.add(v, None).unwrap();
+    let mut parameters = Parameters::default();
+    // This makes the maximum allowed error `0.0`.
+    parameters.eps = 0.0;
+    let mut index = Point2::new(2, vec![vec![0.0; 2]], parameters).unwrap();
+    for point in data.clone() {
+        index.add(point, None).unwrap();
     }
-    let mut res = index.find_many_nearest_neighbors(3, data).unwrap();
+    let nearest_neighbors = index.find_many_nearest_neighbors(3, data).unwrap();
 
-    // indices: [
-    //     [1, 2, 9],
-    //     [2, 9, 1],
-    //     [3, 10, 5],
-    //     [4, 5, 10],
-    //     [5, 4, 10],
-    //     [6, 8, 0],
-    //     [7, 8, 9],
-    //     [8, 7, 6],
-    //     [9, 2, 1],
-    //     [10, 3, 5],
-    // ]
-    // distances: [
-    //     [0.0, 26674.0, 62010.0],
-    //     [0.0, 12340.0, 26674.0],
-    //     [0.0, 17828.0, 55370.0],
-    //     [0.0, 27490.0, 46628.0],
-    //     [0.0, 27490.0, 30274.0],
-    //     [0.0, 50833.0, 65025.0],
-    //     [0.0, 15005.0, 99700.0],
-    //     [0.0, 15005.0, 50833.0],
-    //     [0.0, 12340.0, 62010.0],
-    //     [0.0, 17828.0, 30274.0],
-    // ]
-    let n = res.next().unwrap();
-    assert_eq!(n.index, 1);
-    assert_approx_eq!(n.distance, 0f32);
-    let n = res.next().unwrap();
-    assert_eq!(n.index, 2);
-    assert_approx_eq!(n.distance, 26674f32);
-    let n = res.next().unwrap();
-    assert_eq!(n.index, 9);
-    assert_approx_eq!(n.distance, 62010f32);
-    assert_eq!(res.next().unwrap().index, 2);
-    assert_eq!(res.next().unwrap().index, 9);
-    assert_eq!(res.next().unwrap().index, 1);
-    assert_eq!(res.next().unwrap().index, 3);
-    assert_eq!(res.next().unwrap().index, 10);
-    assert_eq!(res.next().unwrap().index, 5);
+    let indices = [
+        [1, 2, 9],
+        [2, 9, 1],
+        [3, 10, 5],
+        [4, 10, 5],
+        [5, 10, 4],
+        [6, 8, 0],
+        [7, 8, 9],
+        [8, 7, 6],
+        [9, 2, 1],
+        [10, 4, 3],
+    ];
+    let distances_squared = [
+        [0.0, 26674.0, 62010.0],
+        [0.0, 12340.0, 26674.0],
+        [0.0, 17828.0, 55370.0],
+        [0.0, 13562.0, 40360.0],
+        [0.0, 30274.0, 40360.0],
+        [0.0, 50833.0, 65025.0],
+        [0.0, 15005.0, 99700.0],
+        [0.0, 15005.0, 50833.0],
+        [0.0, 12340.0, 62010.0],
+        [0.0, 13562.0, 17828.0],
+    ];
+    for (neighbors, indices, distances_squared) in izip!(
+        (&nearest_neighbors).into_iter(),
+        indices.iter(),
+        distances_squared.iter()
+    ) {
+        for (neighbor, &index, distance_squared) in izip!(neighbors, indices, distances_squared) {
+            assert_eq!(neighbor.index, index);
+            assert_approx_eq!(neighbor.distance_squared, distance_squared);
+        }
+    }
 }
 
 #[test]
@@ -269,11 +267,14 @@ fn nearest_neighbors_get_truncated() {
     type Point2 = VecIndex<f32>;
     let data = vec![vec![0.0, 0.0], vec![1.0, 1.0], vec![2.0, 2.0]];
     let index = Point2::new(2, vec![vec![0.0; 2]], Parameters::default()).unwrap();
-    let mut res = index.find_many_nearest_neighbors(4, data).unwrap();
+    let res = index.find_many_nearest_neighbors(4, data).unwrap();
+    let mut res = (&res).into_iter();
 
-    assert_eq!(res.next().unwrap().index, 2);
-    assert_eq!(res.next().unwrap().index, 2);
-    assert_eq!(res.next().unwrap().index, 2);
+    let mut first = res.next().unwrap();
+    assert_eq!(first.next().unwrap().index, 0);
+    assert!(first.next().is_none());
+    assert_eq!(res.next().unwrap().next().unwrap().index, 0);
+    assert_eq!(res.next().unwrap().next().unwrap().index, 0);
     assert!(res.next().is_none());
 }
 
