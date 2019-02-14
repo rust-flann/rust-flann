@@ -3,15 +3,15 @@ use super::*;
 #[test]
 fn builds_and_adds() {
     let mut index: VecIndex<f32> =
-        VecIndex::new_flat(3, &[0.0; 3 * 5], Parameters::default()).unwrap();
+        VecIndex::new(3, vec![vec![0.0; 3]; 5], Parameters::default()).unwrap();
     assert_eq!(index.len(), 5);
-    index.add(&[0.0; 3], None).unwrap();
+    index.add(vec![0.0; 3], None).unwrap();
     assert_eq!(index.len(), 6);
-    index.add_multiple(vec![vec![]], None).unwrap();
+    index.add_multiple_slices(&[], None).unwrap();
     assert_eq!(index.len(), 6);
     index.add_multiple(vec![vec![0.0; 3]; 4], None).unwrap();
     assert_eq!(index.len(), 10);
-    index.add_multiple_flat(&[0.0; 3 * 4], None).unwrap();
+    index.add_multiple_slices(&[0.0; 3 * 4], None).unwrap();
     assert_eq!(index.len(), 14);
 }
 
@@ -30,9 +30,9 @@ fn get_accesses_right_item() {
     )
     .unwrap();
 
-    index.add(&[16.0, 17.0, 18.0], None).unwrap();
+    index.add_slice(&[16.0, 17.0, 18.0], None).unwrap();
 
-    index.add_multiple(vec![vec![]], None).unwrap();
+    index.add_multiple_slices(&[], None).unwrap();
 
     index
         .add_multiple(
@@ -206,24 +206,22 @@ fn nearest_neighbor_returns_correct_item() {
 fn nearest_neighbors_returns_correct_item() {
     type Point2 = VecIndex<f32>;
     let data = vec![
-        &[413.0, 800.0][..],
-        &[256.0, 755.0][..],
-        &[843.0, 586.0][..],
-        &[922.0, 823.0][..],
-        &[724.0, 789.0][..],
-        &[252.0, 39.0][..],
-        &[350.0, 369.0][..],
-        &[339.0, 247.0][..],
-        &[212.0, 653.0][..],
-        &[881.0, 714.0][..],
+        vec![413.0, 800.0],
+        vec![256.0, 755.0],
+        vec![843.0, 586.0],
+        vec![922.0, 823.0],
+        vec![724.0, 789.0],
+        vec![252.0, 39.0],
+        vec![350.0, 369.0],
+        vec![339.0, 247.0],
+        vec![212.0, 653.0],
+        vec![881.0, 714.0],
     ];
     let mut index = Point2::new(2, vec![vec![0.0; 2]], Parameters::default()).unwrap();
     for v in data.clone() {
         index.add(v, None).unwrap();
     }
-    let mut res = index
-        .find_many_nearest_neighbors(3, data.into_iter().map(|s| s.iter().cloned()))
-        .unwrap();
+    let mut res = index.find_many_nearest_neighbors(3, data).unwrap();
 
     // indices: [
     //     [1, 2, 9],
@@ -270,7 +268,7 @@ fn nearest_neighbors_returns_correct_item() {
 fn nearest_neighbors_get_truncated() {
     type Point2 = VecIndex<f32>;
     let data = vec![vec![0.0, 0.0], vec![1.0, 1.0], vec![2.0, 2.0]];
-    let index = Point2::new(2, vec![vec![0.0; 2], vec![0.0; 2]], Parameters::default()).unwrap();
+    let index = Point2::new(2, vec![vec![0.0; 2]], Parameters::default()).unwrap();
     let mut res = index.find_many_nearest_neighbors(4, data).unwrap();
 
     assert_eq!(res.next().unwrap().index, 2);
