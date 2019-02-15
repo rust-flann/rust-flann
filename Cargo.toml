@@ -1,5 +1,5 @@
 [package]
-authors = ["Adnan Ademovic <adnanademovic100@gmail.com>"]
+authors = ["Adnan Ademovic <adnanademovic100@gmail.com>", "Geordon Worley <vadixidav@gmail.com>"]
 description = "Bindings for the FLANN library"
 license = "MIT"
 name = "flann"
