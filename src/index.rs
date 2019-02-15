@@ -90,6 +90,7 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
                 self.rebuild_threshold,
             )
         };
+        self.storage.push(points_vec);
         assert_eq!(retval, 0);
     }
 
