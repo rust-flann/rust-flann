@@ -214,10 +214,7 @@ fn nearest_neighbors_returns_correct_item() {
         vec![212.0, 653.0],
         vec![881.0, 714.0],
     ];
-    let mut parameters = Parameters::default();
-    // This makes the maximum allowed error `0.0`.
-    parameters.eps = 0.0;
-    let mut index = Point2::new(2, vec![vec![0.0; 2]], parameters).unwrap();
+    let mut index = Point2::new(2, vec![vec![0.0; 2]], Parameters::default()).unwrap();
     for point in data.clone() {
         index.add(point).unwrap();
     }
