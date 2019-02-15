@@ -17,15 +17,15 @@ mod index;
 mod indexable;
 mod indices;
 mod parameters;
+mod slice_index;
 #[cfg(test)]
 mod tests;
 mod vec_index;
-mod slice_index;
 
 pub use enums::{Algorithm, CentersInit, Checks, DistanceType, LogLevel};
 pub use generic_array::typenum;
 pub use index::Index;
 pub use indexable::Indexable;
 pub use parameters::Parameters;
+pub use slice_index::{FlannError, SliceIndex};
 pub use vec_index::VecIndex;
-pub use slice_index::{SliceIndex, FlannError};
