@@ -49,7 +49,7 @@ fn get_accesses_right_item() {
     for (real, test) in index
         .get(0)
         .unwrap()
-        .into_iter()
+        .iter()
         .zip(&[1.0f32, 2.0f32, 3.0f32][..])
     {
         assert_approx_eq!(real, test);
@@ -57,7 +57,7 @@ fn get_accesses_right_item() {
     for (real, test) in index
         .get(1)
         .unwrap()
-        .into_iter()
+        .iter()
         .zip(&[4.0f32, 5.0f32, 6.0f32][..])
     {
         assert_approx_eq!(real, test);
@@ -65,7 +65,7 @@ fn get_accesses_right_item() {
     for (real, test) in index
         .get(2)
         .unwrap()
-        .into_iter()
+        .iter()
         .zip(&[7.0f32, 8.0f32, 9.0f32][..])
     {
         assert_approx_eq!(real, test);
@@ -73,7 +73,7 @@ fn get_accesses_right_item() {
     for (real, test) in index
         .get(3)
         .unwrap()
-        .into_iter()
+        .iter()
         .zip(&[10.0f32, 11.0f32, 12.0f32][..])
     {
         assert_approx_eq!(real, test);
@@ -81,7 +81,7 @@ fn get_accesses_right_item() {
     for (real, test) in index
         .get(4)
         .unwrap()
-        .into_iter()
+        .iter()
         .zip(&[13.0f32, 14.0f32, 15.0f32][..])
     {
         assert_approx_eq!(real, test);
@@ -89,7 +89,7 @@ fn get_accesses_right_item() {
     for (real, test) in index
         .get(5)
         .unwrap()
-        .into_iter()
+        .iter()
         .zip(&[16.0f32, 17.0f32, 18.0f32][..])
     {
         assert_approx_eq!(real, test);
@@ -97,7 +97,7 @@ fn get_accesses_right_item() {
     for (real, test) in index
         .get(6)
         .unwrap()
-        .into_iter()
+        .iter()
         .zip(&[19.0f32, 20.0f32, 21.0f32][..])
     {
         assert_approx_eq!(real, test);
@@ -105,7 +105,7 @@ fn get_accesses_right_item() {
     for (real, test) in index
         .get(7)
         .unwrap()
-        .into_iter()
+        .iter()
         .zip(&[22.0f32, 23.0f32, 24.0f32][..])
     {
         assert_approx_eq!(real, test);
@@ -113,7 +113,7 @@ fn get_accesses_right_item() {
     for (real, test) in index
         .get(8)
         .unwrap()
-        .into_iter()
+        .iter()
         .zip(&[25.0f32, 26.0f32, 27.0f32][..])
     {
         assert_approx_eq!(real, test);
@@ -121,7 +121,7 @@ fn get_accesses_right_item() {
     for (real, test) in index
         .get(9)
         .unwrap()
-        .into_iter()
+        .iter()
         .zip(&[28.0f32, 29.0f32, 30.0f32][..])
     {
         assert_approx_eq!(real, test);
@@ -131,7 +131,7 @@ fn get_accesses_right_item() {
 
 #[test]
 fn nearest_neighbor_returns_correct_item() {
-    let index: VecIndex<f32> = VecIndex::new(
+    let mut index: VecIndex<f32> = VecIndex::new(
         3,
         vec![
             vec![0.0, 0.0, 0.0],
@@ -266,7 +266,7 @@ fn nearest_neighbors_returns_correct_item() {
 fn nearest_neighbors_get_truncated() {
     type Point2 = VecIndex<f32>;
     let data = vec![vec![0.0, 0.0], vec![1.0, 1.0], vec![2.0, 2.0]];
-    let index = Point2::new(2, vec![vec![0.0; 2]], Parameters::default()).unwrap();
+    let mut index = Point2::new(2, vec![vec![0.0; 2]], Parameters::default()).unwrap();
     let res = index.find_many_nearest_neighbors(4, data).unwrap();
     let mut res = (&res).into_iter();
 
@@ -280,7 +280,7 @@ fn nearest_neighbors_get_truncated() {
 
 #[test]
 fn search_radius_returns_correct_item() {
-    let index: VecIndex<f32> = VecIndex::new(
+    let mut index: VecIndex<f32> = VecIndex::new(
         3,
         vec![
             vec![0.0, 0.0, 0.0],

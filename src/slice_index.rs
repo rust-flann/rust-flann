@@ -110,7 +110,6 @@ impl<'a, T: Indexable> SliceIndex<'a, T> {
                 rebuild_threshold
                     .into()
                     .unwrap_or(DEFAULT_REBUILD_THRESHOLD),
-                &self.parameters,
             )
         };
         assert_eq!(retval, 0);
@@ -145,7 +144,6 @@ impl<'a, T: Indexable> SliceIndex<'a, T> {
                 rebuild_threshold
                     .into()
                     .unwrap_or(DEFAULT_REBUILD_THRESHOLD),
-                &self.parameters,
             )
         };
         assert_eq!(retval, 0);
@@ -153,20 +151,11 @@ impl<'a, T: Indexable> SliceIndex<'a, T> {
     }
 
     /// Get the point that corresponds to this index.
-    pub fn get(&self, idx: usize) -> Option<Vec<T>> {
+    pub fn get(&self, idx: usize) -> Option<&'a [T]> {
         if idx < self.len() {
-            let mut point = vec![T::default(); self.point_len];
-            let retval = unsafe {
-                T::get_point(
-                    self.index,
-                    idx as u32,
-                    point.as_mut_ptr(),
-                    self.point_len as i32,
-                    &self.parameters,
-                )
-            };
-            assert_eq!(retval, 0);
-            Some(point)
+            let point = unsafe { T::get_point(self.index, idx as u32) };
+            assert!(!point.is_null());
+            Some(unsafe { std::slice::from_raw_parts(point, self.point_len) })
         } else {
             None
         }
@@ -175,7 +164,7 @@ impl<'a, T: Indexable> SliceIndex<'a, T> {
     /// Returns `true` if the point was successfully removed.
     pub fn remove(&mut self, idx: usize) -> bool {
         if idx < self.len() {
-            let retval = unsafe { T::remove_point(self.index, idx as u32, &self.parameters) };
+            let retval = unsafe { T::remove_point(self.index, idx as u32) };
             assert_eq!(retval, 0);
             true
         } else {
@@ -184,7 +173,7 @@ impl<'a, T: Indexable> SliceIndex<'a, T> {
     }
 
     pub fn len(&self) -> usize {
-        unsafe { T::size(self.index, &self.parameters) as usize }
+        unsafe { T::size(self.index) as usize }
     }
 
     pub fn is_empty(&self) -> bool {
@@ -193,7 +182,7 @@ impl<'a, T: Indexable> SliceIndex<'a, T> {
 
     /// Performs a search to find only the closest neighbor.
     pub fn find_nearest_neighbor(
-        &self,
+        &mut self,
         point: &[T],
     ) -> Result<Neighbor<T::ResultType>, FlannError> {
         if point.len() != self.point_len {
@@ -212,7 +201,7 @@ impl<'a, T: Indexable> SliceIndex<'a, T> {
                 &mut index,
                 &mut distance_squared,
                 1,
-                &self.parameters,
+                &mut self.parameters,
             )
         };
         assert_eq!(retval, 0);
@@ -225,7 +214,7 @@ impl<'a, T: Indexable> SliceIndex<'a, T> {
     /// Performs k-NN search for `num` neighbors.
     /// If there are less points in the set than `num` it returns that many neighbors.
     pub fn find_nearest_neighbors(
-        &self,
+        &mut self,
         num: usize,
         point: &[T],
     ) -> Result<impl Iterator<Item = Neighbor<T::ResultType>>, FlannError> {
@@ -246,7 +235,7 @@ impl<'a, T: Indexable> SliceIndex<'a, T> {
                 indices.as_mut_ptr(),
                 distances_squared.as_mut_ptr(),
                 num as i32,
-                &self.parameters,
+                &mut self.parameters,
             )
         };
         assert_eq!(retval, 0);
@@ -263,7 +252,7 @@ impl<'a, T: Indexable> SliceIndex<'a, T> {
     ///
     /// The returned iterator is sorted by closest to furthest.
     pub fn find_nearest_neighbors_radius(
-        &self,
+        &mut self,
         num: usize,
         radius: f32,
         point: &[T],
@@ -285,7 +274,7 @@ impl<'a, T: Indexable> SliceIndex<'a, T> {
                 distances_squared.as_mut_ptr(),
                 num as i32,
                 radius,
-                &self.parameters,
+                &mut self.parameters,
             )
         };
         assert!(retval >= 0);
@@ -310,7 +299,7 @@ impl<'a, T: Indexable> SliceIndex<'a, T> {
     /// itertools or collect the neighbors into a `Vec` and then use
     /// `.chunks_exact()`. This will be corrected in a future release.
     pub fn find_many_nearest_neighbors<I, P>(
-        &self,
+        &mut self,
         num: usize,
         points: I,
     ) -> Result<IntoChunks<impl Iterator<Item = Neighbor<T::ResultType>>>, FlannError>
@@ -346,7 +335,7 @@ impl<'a, T: Indexable> SliceIndex<'a, T> {
     /// in component order where there are `point_len` components
     /// (as specified in `new` or `new_flat`).
     pub fn find_many_nearest_neighbors_flat(
-        &self,
+        &mut self,
         num: usize,
         points: &[T],
     ) -> Result<IntoChunks<impl Iterator<Item = Neighbor<T::ResultType>>>, FlannError> {
@@ -382,7 +371,7 @@ impl<'a, T: Indexable> SliceIndex<'a, T> {
                 indices.as_mut_ptr(),
                 distances_squared.as_mut_ptr(),
                 num as i32,
-                &self.parameters,
+                &mut self.parameters,
             )
         };
         assert_eq!(retval, 0);

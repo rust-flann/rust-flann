@@ -68,7 +68,6 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
                 1,
                 N::to_i32(),
                 rebuild_threshold.unwrap_or(2.0),
-                &self.parameters,
             )
         };
         assert_eq!(retval, 0);
@@ -89,7 +88,6 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
                 l,
                 N::to_i32(),
                 rebuild_threshold.unwrap_or(2.0),
-                &self.parameters,
             )
         };
         assert_eq!(retval, 0);
@@ -102,7 +100,7 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
     pub fn remove(&mut self, idx: usize) {
         self.points.remove(idx);
         unsafe {
-            T::remove_point(self.index, idx as u32, &self.parameters);
+            T::remove_point(self.index, idx as u32);
         }
     }
 
@@ -110,7 +108,7 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
         self.points.len()
     }
 
-    pub fn find_nearest_neighbor(&self, point: &Datum<T, N>) -> (usize, T::ResultType) {
+    pub fn find_nearest_neighbor(&mut self, point: &Datum<T, N>) -> (usize, T::ResultType) {
         let mut data_raw = point.iter().cloned().collect::<Vec<T>>();
         let mut index = 0;
         let mut dist = T::ResultType::default();
@@ -122,7 +120,7 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
                 &mut index,
                 &mut dist,
                 1,
-                &self.parameters,
+                &mut self.parameters,
             )
         };
         assert_eq!(retval, 0);
@@ -130,7 +128,7 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
     }
 
     pub fn find_nearest_neighbors(
-        &self,
+        &mut self,
         points: &[Datum<T, N>],
         mut num: usize,
     ) -> Vec<Vec<(usize, T::ResultType)>> {
@@ -152,7 +150,7 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
                 index.as_mut_ptr(),
                 dist.as_mut_ptr(),
                 num as i32,
-                &self.parameters,
+                &mut self.parameters,
             )
         };
         assert_eq!(retval, 0);
@@ -164,7 +162,7 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
     }
 
     pub fn search_radius(
-        &self,
+        &mut self,
         point: &Datum<T, N>,
         radius: f32,
         max_nn: usize,
@@ -180,7 +178,7 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
                 dists.as_mut_ptr(),
                 max_nn as i32,
                 radius,
-                &self.parameters,
+                &mut self.parameters,
             )
         };
         assert!(retval >= 0);

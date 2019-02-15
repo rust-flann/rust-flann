@@ -41,6 +41,7 @@ convertable_enum!(CentersInit; raw::flann_centers_init_t;
     Random = raw::flann_centers_init_t_FLANN_CENTERS_RANDOM,
     Gonzales = raw::flann_centers_init_t_FLANN_CENTERS_GONZALES,
     KMeansPP = raw::flann_centers_init_t_FLANN_CENTERS_KMEANSPP,
+    Groupwise = raw::flann_centers_init_t_FLANN_CENTERS_GROUPWISE,
 );
 
 convertable_enum!(LogLevel; raw::flann_log_level_t;

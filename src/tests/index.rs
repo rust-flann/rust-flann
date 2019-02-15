@@ -11,7 +11,8 @@ fn builds_and_adds() {
             Default::default(),
         ],
         Parameters::default(),
-    ).unwrap();
+    )
+    .unwrap();
     assert_eq!(index.count(), 5);
     index.add(Default::default(), None);
     assert_eq!(index.count(), 6);
@@ -40,7 +41,8 @@ fn get_accesses_right_item() {
             arr![f32; 13, 14, 15],
         ],
         Parameters::default(),
-    ).unwrap();
+    )
+    .unwrap();
 
     index.add(arr![f32; 16, 17, 18], None);
 
@@ -71,7 +73,7 @@ fn get_accesses_right_item() {
 
 #[test]
 fn nearest_neighbor_returns_correct_item() {
-    let index = Index::<f32, typenum::U3>::new(
+    let mut index = Index::<f32, typenum::U3>::new(
         vec![
             arr![f32; 0, 0, 0],
             arr![f32; 0, 0, 1],
@@ -83,7 +85,8 @@ fn nearest_neighbor_returns_correct_item() {
             arr![f32; 1, 1, 1],
         ],
         Parameters::default(),
-    ).unwrap();
+    )
+    .unwrap();
 
     assert_eq!(index.find_nearest_neighbor(&arr![f32; -1, -1, -1]).0, 0);
     assert_eq!(index.find_nearest_neighbor(&arr![f32; -1, -1, 2]).0, 1);
@@ -161,10 +164,11 @@ fn nearest_neighbors_returns_correct_item() {
 fn nearest_neighbors_get_truncated() {
     type Point2 = Index<f32, typenum::U2>;
     let data = vec![arr![f32; 0, 0], arr![f32; 1, 1], arr![f32; 2, 2]];
-    let index = Point2::new(
+    let mut index = Point2::new(
         vec![Default::default(), Default::default()],
         Parameters::default(),
-    ).unwrap();
+    )
+    .unwrap();
     let res = index.find_nearest_neighbors(&data, 4);
 
     assert_eq!(res.len(), 3);
@@ -175,7 +179,7 @@ fn nearest_neighbors_get_truncated() {
 
 #[test]
 fn search_radius_returns_correct_item() {
-    let index = Index::<f32, typenum::U3>::new(
+    let mut index = Index::<f32, typenum::U3>::new(
         vec![
             arr![f32; 0, 0, 0],
             arr![f32; 0, 0, 1],
@@ -187,7 +191,8 @@ fn search_radius_returns_correct_item() {
             arr![f32; 1, 1, 1],
         ],
         Parameters::default(),
-    ).unwrap();
+    )
+    .unwrap();
 
     let mut indices = index
         .search_radius(&arr![f32; 0, 0, -1], 1.1, 10)
