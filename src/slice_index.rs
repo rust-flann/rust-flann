@@ -1,37 +1,14 @@
 use itertools::{IntoChunks, Itertools};
 use raw;
+use FlannError;
 use Indexable;
+use Neighbor;
 use Parameters;
-
-const DEFAULT_REBUILD_THRESHOLD: f32 = 2.0;
-
-#[derive(Copy, Clone, Debug, Fail)]
-pub enum FlannError {
-    #[fail(
-        display = "expected {} dimensions in point, but got {} dimensions",
-        expected, got
-    )]
-    InvalidPointDimensionality { expected: usize, got: usize },
-    #[fail(
-        display = "expected number divisible by {}, but got {}, which is not",
-        expected, got
-    )]
-    InvalidFlatPointsLen { expected: usize, got: usize },
-    #[fail(display = "FLANN failed to build index")]
-    FailedToBuildIndex,
-    #[fail(display = "input must have at least one point")]
-    ZeroInputPoints,
-}
-
-#[derive(Copy, Clone, Debug)]
-pub struct Neighbor<D> {
-    pub index: usize,
-    pub distance_squared: D,
-}
 
 pub struct SliceIndex<'a, T: Indexable> {
     index: raw::flann_index_t,
     parameters: raw::FLANNParameters,
+    rebuild_threshold: f32,
     pub(crate) point_len: usize,
     _phantom: std::marker::PhantomData<&'a T>,
 }
@@ -65,6 +42,7 @@ impl<'a, T: Indexable> SliceIndex<'a, T> {
         }
         // This stores how much faster FLANN executed compared to linear, which we discard.
         let mut speedup = 0.0;
+        let rebuild_threshold = parameters.rebuild_threshold;
         let mut flann_params = parameters.into();
         let index = unsafe {
             T::build_index(
@@ -81,20 +59,14 @@ impl<'a, T: Indexable> SliceIndex<'a, T> {
         Ok(Self {
             index,
             parameters: flann_params,
+            rebuild_threshold,
             point_len,
             _phantom: Default::default(),
         })
     }
 
     /// Adds a point to the index.
-    ///
-    /// To prevent the index from becoming unbalanced, it rebuilds after adding
-    /// `rebuild_theshold` points. This defaults to `2.0`.
-    pub fn add_slice(
-        &mut self,
-        point: &'a [T],
-        rebuild_threshold: impl Into<Option<f32>>,
-    ) -> Result<(), FlannError> {
+    pub fn add_slice(&mut self, point: &'a [T]) -> Result<(), FlannError> {
         if point.len() != self.point_len {
             return Err(FlannError::InvalidPointDimensionality {
                 expected: self.point_len,
@@ -107,9 +79,7 @@ impl<'a, T: Indexable> SliceIndex<'a, T> {
                 point.as_ptr() as *mut T,
                 1,
                 self.point_len as i32,
-                rebuild_threshold
-                    .into()
-                    .unwrap_or(DEFAULT_REBUILD_THRESHOLD),
+                self.rebuild_threshold,
             )
         };
         assert_eq!(retval, 0);
@@ -117,14 +87,7 @@ impl<'a, T: Indexable> SliceIndex<'a, T> {
     }
 
     /// Adds multiple points to the index.
-    ///
-    /// To prevent the index from becoming unbalanced, it rebuilds after adding
-    /// `rebuild_theshold` points. This defaults to `2.0`.
-    pub fn add_many_slices(
-        &mut self,
-        points: &'a [T],
-        rebuild_threshold: impl Into<Option<f32>>,
-    ) -> Result<(), FlannError> {
+    pub fn add_many_slices(&mut self, points: &'a [T]) -> Result<(), FlannError> {
         // Don't run FLANN if we add no points.
         if points.is_empty() {
             return Ok(());
@@ -141,16 +104,14 @@ impl<'a, T: Indexable> SliceIndex<'a, T> {
                 points.as_ptr() as *mut T,
                 (points.len() / self.point_len) as i32,
                 self.point_len as i32,
-                rebuild_threshold
-                    .into()
-                    .unwrap_or(DEFAULT_REBUILD_THRESHOLD),
+                self.rebuild_threshold,
             )
         };
         assert_eq!(retval, 0);
         Ok(())
     }
 
-    /// Get the point that corresponds to this index.
+    /// Get the point that corresponds to this index `idx`.
     pub fn get(&self, idx: usize) -> Option<&'a [T]> {
         if idx < self.len() {
             let point = unsafe { T::get_point(self.index, idx as u32) };
@@ -161,15 +122,10 @@ impl<'a, T: Indexable> SliceIndex<'a, T> {
         }
     }
 
-    /// Returns `true` if the point was successfully removed.
-    pub fn remove(&mut self, idx: usize) -> bool {
-        if idx < self.len() {
-            let retval = unsafe { T::remove_point(self.index, idx as u32) };
-            assert_eq!(retval, 0);
-            true
-        } else {
-            false
-        }
+    /// Removes a point at index `idx`.
+    pub fn remove(&mut self, idx: usize) {
+        let retval = unsafe { T::remove_point(self.index, idx as u32) };
+        assert_eq!(retval, 0);
     }
 
     pub fn len(&self) -> usize {
@@ -254,7 +210,7 @@ impl<'a, T: Indexable> SliceIndex<'a, T> {
     pub fn find_nearest_neighbors_radius(
         &mut self,
         num: usize,
-        radius: f32,
+        radius_squared: f32,
         point: &[T],
     ) -> Result<impl Iterator<Item = Neighbor<T::ResultType>>, FlannError> {
         if point.len() != self.point_len {
@@ -273,7 +229,7 @@ impl<'a, T: Indexable> SliceIndex<'a, T> {
                 indices.as_mut_ptr(),
                 distances_squared.as_mut_ptr(),
                 num as i32,
-                radius,
+                radius_squared,
                 &mut self.parameters,
             )
         };
@@ -292,12 +248,6 @@ impl<'a, T: Indexable> SliceIndex<'a, T> {
     ///
     /// If there are less points in the set than `num` it returns that many
     /// neighbors for each point.
-    ///
-    /// The returned iterator contains each point's matches in
-    /// `min(num, self.len())` sized chunks. If you want to iterate over the
-    /// matches in a logical way you will need to use `.chunks()` from
-    /// itertools or collect the neighbors into a `Vec` and then use
-    /// `.chunks_exact()`. This will be corrected in a future release.
     pub fn find_many_nearest_neighbors<I, P>(
         &mut self,
         num: usize,
@@ -324,12 +274,6 @@ impl<'a, T: Indexable> SliceIndex<'a, T> {
     ///
     /// If there are less points in the set than `num` it returns that many
     /// neighbors for each point.
-    ///
-    /// The returned iterator contains each point's matches in
-    /// `min(num, self.len())` sized chunks. If you want to iterate over the
-    /// matches in a logical way you will need to use `.chunks()` from
-    /// itertools or collect the neighbors into a `Vec` and then use
-    /// `.chunks_exact()`. This may be corrected in a future release.
     ///
     /// This assumes points are already in a slice of memory
     /// in component order where there are `point_len` components

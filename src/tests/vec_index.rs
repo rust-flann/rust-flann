@@ -5,13 +5,13 @@ fn builds_and_adds() {
     let mut index: VecIndex<f32> =
         VecIndex::new(3, vec![vec![0.0; 3]; 5], Parameters::default()).unwrap();
     assert_eq!(index.len(), 5);
-    index.add(vec![0.0; 3], None).unwrap();
+    index.add(vec![0.0; 3]).unwrap();
     assert_eq!(index.len(), 6);
-    index.add_many_slices(&[], None).unwrap();
+    index.add_many_slices(&[]).unwrap();
     assert_eq!(index.len(), 6);
-    index.add_many(vec![vec![0.0; 3]; 4], None).unwrap();
+    index.add_many(vec![vec![0.0; 3]; 4]).unwrap();
     assert_eq!(index.len(), 10);
-    index.add_many_slices(&[0.0; 3 * 4], None).unwrap();
+    index.add_many_slices(&[0.0; 3 * 4]).unwrap();
     assert_eq!(index.len(), 14);
 }
 
@@ -30,20 +30,17 @@ fn get_accesses_right_item() {
     )
     .unwrap();
 
-    index.add_slice(&[16.0, 17.0, 18.0], None).unwrap();
+    index.add_slice(&[16.0, 17.0, 18.0]).unwrap();
 
-    index.add_many_slices(&[], None).unwrap();
+    index.add_many_slices(&[]).unwrap();
 
     index
-        .add_many(
-            vec![
-                vec![19.0, 20.0, 21.0],
-                vec![22.0, 23.0, 24.0],
-                vec![25.0, 26.0, 27.0],
-                vec![28.0, 29.0, 30.0],
-            ],
-            None,
-        )
+        .add_many(vec![
+            vec![19.0, 20.0, 21.0],
+            vec![22.0, 23.0, 24.0],
+            vec![25.0, 26.0, 27.0],
+            vec![28.0, 29.0, 30.0],
+        ])
         .unwrap();
 
     for (real, test) in index
@@ -222,7 +219,7 @@ fn nearest_neighbors_returns_correct_item() {
     parameters.eps = 0.0;
     let mut index = Point2::new(2, vec![vec![0.0; 2]], parameters).unwrap();
     for point in data.clone() {
-        index.add(point, None).unwrap();
+        index.add(point).unwrap();
     }
     let nearest_neighbors = index.find_many_nearest_neighbors(3, data).unwrap();
 

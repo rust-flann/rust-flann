@@ -1,4 +1,5 @@
-use slice_index::{FlannError, SliceIndex};
+use slice_index::SliceIndex;
+use FlannError;
 use Indexable;
 use Parameters;
 
@@ -50,6 +51,9 @@ impl<T: Indexable> VecIndex<T> {
                 });
             }
         }
+        if points_vec.is_empty() {
+            return Err(FlannError::ZeroInputPoints);
+        }
         let index = SliceIndex::new(
             point_len,
             unsafe { std::mem::transmute(&points_vec[..]) },
@@ -62,31 +66,17 @@ impl<T: Indexable> VecIndex<T> {
     }
 
     /// Adds a point to the index.
-    ///
-    /// To prevent the index from becoming unbalanced, it rebuilds after adding
-    /// `rebuild_theshold` points. This defaults to `2.0`.
-    pub fn add(
-        &mut self,
-        point: Vec<T>,
-        rebuild_threshold: impl Into<Option<f32>>,
-    ) -> Result<(), FlannError> {
-        self.slice_index.as_mut().unwrap().add_slice(
-            unsafe { std::mem::transmute(&point[..]) },
-            rebuild_threshold,
-        )?;
+    pub fn add(&mut self, point: Vec<T>) -> Result<(), FlannError> {
+        self.slice_index
+            .as_mut()
+            .unwrap()
+            .add_slice(unsafe { std::mem::transmute(&point[..]) })?;
         self.storage.push(point);
         Ok(())
     }
 
     /// Adds multiple points to the index.
-    ///
-    /// To prevent the index from becoming unbalanced, it rebuilds after adding
-    /// `rebuild_theshold` points. This defaults to `2.0`.
-    pub fn add_many<I, P>(
-        &mut self,
-        points: I,
-        rebuild_threshold: impl Into<Option<f32>>,
-    ) -> Result<(), FlannError>
+    pub fn add_many<I, P>(&mut self, points: I) -> Result<(), FlannError>
     where
         I: IntoIterator<Item = P>,
         P: IntoIterator<Item = T>,
@@ -101,10 +91,7 @@ impl<T: Indexable> VecIndex<T> {
                 });
             }
         }
-        self.add_many_slices(
-            unsafe { std::mem::transmute(&points_vec[..]) },
-            rebuild_threshold,
-        )?;
+        self.add_many_slices(unsafe { std::mem::transmute(&points_vec[..]) })?;
         self.storage.push(points_vec);
         Ok(())
     }

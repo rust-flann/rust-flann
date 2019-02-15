@@ -2,6 +2,8 @@ use enums::{Algorithm, CentersInit, Checks, LogLevel};
 use raw;
 use std::os::raw::c_long;
 
+const DEFAULT_REBUILD_THRESHOLD: f32 = 2.0;
+
 #[derive(Debug, Clone)]
 pub struct Parameters {
     pub algorithm: Algorithm,
@@ -25,6 +27,7 @@ pub struct Parameters {
     pub multi_probe_level: u32,
     pub log_level: LogLevel,
     pub random_seed: c_long,
+    pub rebuild_threshold: f32,
 }
 
 impl Default for Parameters {
@@ -61,6 +64,7 @@ impl Parameters {
             log_level: LogLevel::from_raw(v.log_level)
                 .ok_or_else(|| format!("Illegal log level enum value: {}", v.log_level))?,
             random_seed: v.random_seed,
+            rebuild_threshold: DEFAULT_REBUILD_THRESHOLD,
         })
     }
 }
