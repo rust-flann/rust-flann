@@ -1,21 +1,19 @@
-use generic_array::{ArrayLength, GenericArray};
 use itertools::{IntoChunks, Itertools};
 use raw;
-use std::marker::PhantomData;
 use FlannError;
 use Indexable;
 use Neighbor;
 use Parameters;
 
-pub struct Index<T: Indexable, N: ArrayLength<T>> {
+pub struct SliceIndex<'a, T: Indexable> {
     index: raw::flann_index_t,
-    storage: Vec<Vec<T>>,
     parameters: raw::FLANNParameters,
     rebuild_threshold: f32,
-    _phantom: PhantomData<(T, N)>,
+    pub(crate) point_len: usize,
+    _phantom: std::marker::PhantomData<&'a T>,
 }
 
-impl<T: Indexable, N: ArrayLength<T>> Drop for Index<T, N> {
+impl<'a, T: Indexable> Drop for SliceIndex<'a, T> {
     fn drop(&mut self) {
         unsafe {
             T::free_index(self.index, &mut self.parameters);
@@ -23,23 +21,34 @@ impl<T: Indexable, N: ArrayLength<T>> Drop for Index<T, N> {
     }
 }
 
-impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
-    pub fn new<I>(points: I, parameters: Parameters) -> Result<Self, FlannError>
-    where
-        I: IntoIterator<Item = GenericArray<T, N>>,
-    {
-        let points_vec: Vec<T> = points.into_iter().flat_map(|p| p.into_iter()).collect();
-        if points_vec.is_empty() {
+impl<'a, T: Indexable> SliceIndex<'a, T> {
+    /// Makes a new index from points that are already in a slice of memory
+    /// in component order where there are `point_len` components.
+    ///
+    /// This borrows the slice internally in FLANN.
+    pub fn new(
+        point_len: usize,
+        points: &'a [T],
+        parameters: Parameters,
+    ) -> Result<Self, FlannError> {
+        if points.is_empty() {
             return Err(FlannError::ZeroInputPoints);
         }
+        if points.len() % point_len != 0 {
+            return Err(FlannError::InvalidFlatPointsLen {
+                expected: point_len,
+                got: points.len(),
+            });
+        }
+        // This stores how much faster FLANN executed compared to linear, which we discard.
         let mut speedup = 0.0;
         let rebuild_threshold = parameters.rebuild_threshold;
         let mut flann_params = parameters.into();
         let index = unsafe {
             T::build_index(
-                points_vec.as_ptr() as *mut T,
-                (points_vec.len() / N::to_usize()) as i32,
-                N::to_i32(),
+                points.as_ptr() as *mut T,
+                (points.len() / point_len) as i32,
+                point_len as i32,
                 &mut speedup,
                 &mut flann_params,
             )
@@ -49,57 +58,65 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
         }
         Ok(Self {
             index,
-            storage: vec![points_vec],
             parameters: flann_params,
             rebuild_threshold,
-            _phantom: PhantomData,
+            point_len,
+            _phantom: Default::default(),
         })
     }
 
     /// Adds a point to the index.
-    pub fn add(&mut self, point: GenericArray<T, N>) {
-        let points_vec: Vec<T> = point.into_iter().collect();
-        let retval = unsafe {
-            T::add_points(
-                self.index,
-                points_vec.as_ptr() as *mut T,
-                1,
-                N::to_i32(),
-                self.rebuild_threshold,
-            )
-        };
-        self.storage.push(points_vec);
-        assert_eq!(retval, 0);
-    }
-
-    /// Adds multiple points to the index.
-    pub fn add_multiple<I>(&mut self, points: I)
-    where
-        I: IntoIterator<Item = GenericArray<T, N>>,
-    {
-        let points_vec: Vec<T> = points.into_iter().flat_map(|p| p.into_iter()).collect();
-        if points_vec.is_empty() {
-            return;
+    pub fn add_slice(&mut self, point: &'a [T]) -> Result<(), FlannError> {
+        if point.len() != self.point_len {
+            return Err(FlannError::InvalidPointDimensionality {
+                expected: self.point_len,
+                got: point.len(),
+            });
         }
         let retval = unsafe {
             T::add_points(
                 self.index,
-                points_vec.as_ptr() as *mut T,
-                (points_vec.len() / N::to_usize()) as i32,
-                N::to_i32(),
+                point.as_ptr() as *mut T,
+                1,
+                self.point_len as i32,
                 self.rebuild_threshold,
             )
         };
-        self.storage.push(points_vec);
         assert_eq!(retval, 0);
+        Ok(())
+    }
+
+    /// Adds multiple points to the index.
+    pub fn add_many_slices(&mut self, points: &'a [T]) -> Result<(), FlannError> {
+        // Don't run FLANN if we add no points.
+        if points.is_empty() {
+            return Ok(());
+        }
+        if points.len() % self.point_len != 0 {
+            return Err(FlannError::InvalidFlatPointsLen {
+                expected: self.point_len,
+                got: points.len(),
+            });
+        }
+        let retval = unsafe {
+            T::add_points(
+                self.index,
+                points.as_ptr() as *mut T,
+                (points.len() / self.point_len) as i32,
+                self.point_len as i32,
+                self.rebuild_threshold,
+            )
+        };
+        assert_eq!(retval, 0);
+        Ok(())
     }
 
     /// Get the point that corresponds to this index `idx`.
-    pub fn get(&self, idx: usize) -> Option<&GenericArray<T, N>> {
+    pub fn get(&self, idx: usize) -> Option<&'a [T]> {
         if idx < self.len() {
             let point = unsafe { T::get_point(self.index, idx as u32) };
             assert!(!point.is_null());
-            Some(unsafe { &*(point as *const GenericArray<T, N>) })
+            Some(unsafe { std::slice::from_raw_parts(point, self.point_len) })
         } else {
             None
         }
@@ -120,7 +137,16 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
     }
 
     /// Performs a search to find only the closest neighbor.
-    pub fn find_nearest_neighbor(&mut self, point: &GenericArray<T, N>) -> Neighbor<T::ResultType> {
+    pub fn find_nearest_neighbor(
+        &mut self,
+        point: &[T],
+    ) -> Result<Neighbor<T::ResultType>, FlannError> {
+        if point.len() != self.point_len {
+            return Err(FlannError::InvalidPointDimensionality {
+                expected: self.point_len,
+                got: point.len(),
+            });
+        }
         let mut index = -1;
         let mut distance_squared = T::ResultType::default();
         let retval = unsafe {
@@ -135,10 +161,10 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
             )
         };
         assert_eq!(retval, 0);
-        Neighbor {
+        Ok(Neighbor {
             index: index as usize,
             distance_squared,
-        }
+        })
     }
 
     /// Performs k-NN search for `num` neighbors.
@@ -146,8 +172,14 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
     pub fn find_nearest_neighbors(
         &mut self,
         num: usize,
-        point: &GenericArray<T, N>,
-    ) -> impl Iterator<Item = Neighbor<T::ResultType>> {
+        point: &[T],
+    ) -> Result<impl Iterator<Item = Neighbor<T::ResultType>>, FlannError> {
+        if point.len() != self.point_len {
+            return Err(FlannError::InvalidPointDimensionality {
+                expected: self.point_len,
+                got: point.len(),
+            });
+        }
         let num = num.min(self.len());
         let mut indices: Vec<i32> = vec![-1; num];
         let mut distances_squared: Vec<T::ResultType> = vec![T::ResultType::default(); num];
@@ -163,23 +195,30 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
             )
         };
         assert_eq!(retval, 0);
-        indices
-            .into_iter()
-            .zip(distances_squared.into_iter())
-            .map(|(index, distance_squared)| Neighbor {
+        Ok(indices.into_iter().zip(distances_squared.into_iter()).map(
+            |(index, distance_squared)| Neighbor {
                 index: index as usize,
                 distance_squared,
-            })
+            },
+        ))
     }
 
-    /// Performs k-NN search for `num` neighbors.
+    /// Performs k-NN search for `num` neighbors, limiting the search to `radius` distance.
     /// If there are less points in the set than `num` it returns that many neighbors.
+    ///
+    /// The returned iterator is sorted by closest to furthest.
     pub fn find_nearest_neighbors_radius(
         &mut self,
         num: usize,
         radius_squared: f32,
-        point: &GenericArray<T, N>,
-    ) -> impl Iterator<Item = Neighbor<T::ResultType>> {
+        point: &[T],
+    ) -> Result<impl Iterator<Item = Neighbor<T::ResultType>>, FlannError> {
+        if point.len() != self.point_len {
+            return Err(FlannError::InvalidPointDimensionality {
+                expected: self.point_len,
+                got: point.len(),
+            });
+        }
         let num = num.min(self.len());
         let mut indices: Vec<i32> = vec![-1; num];
         let mut distances_squared: Vec<T::ResultType> = vec![T::ResultType::default(); num];
@@ -195,25 +234,55 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
             )
         };
         assert!(retval >= 0);
-        indices
+        Ok(indices
             .into_iter()
             .zip(distances_squared.into_iter())
             .take(retval as usize)
             .map(|(index, distance_squared)| Neighbor {
                 index: index as usize,
                 distance_squared,
-            })
+            }))
+    }
+
+    /// Performs k-NN search for `num` neighbors for several points.
+    ///
+    /// If there are less points in the set than `num` it returns that many
+    /// neighbors for each point.
+    pub fn find_many_nearest_neighbors<I, P>(
+        &mut self,
+        num: usize,
+        points: I,
+    ) -> Result<IntoChunks<impl Iterator<Item = Neighbor<T::ResultType>>>, FlannError>
+    where
+        I: IntoIterator<Item = P>,
+        P: IntoIterator<Item = T>,
+    {
+        let mut points_vec = Vec::new();
+        for point in points {
+            let count = point.into_iter().map(|d| points_vec.push(d)).count();
+            if count != self.point_len {
+                return Err(FlannError::InvalidPointDimensionality {
+                    expected: self.point_len,
+                    got: count,
+                });
+            }
+        }
+        self.find_many_nearest_neighbors_flat(num, &points_vec)
     }
 
     /// Performs k-NN search on `num` neighbors for several points.
     ///
     /// If there are less points in the set than `num` it returns that many
     /// neighbors for each point.
-    pub fn find_many_nearest_neighbors(
+    ///
+    /// This assumes points are already in a slice of memory
+    /// in component order where there are `point_len` components
+    /// (as specified in `new` or `new_flat`).
+    pub fn find_many_nearest_neighbors_flat(
         &mut self,
         num: usize,
-        points: &[GenericArray<T, N>],
-    ) -> IntoChunks<impl Iterator<Item = Neighbor<T::ResultType>>> {
+        points: &[T],
+    ) -> Result<IntoChunks<impl Iterator<Item = Neighbor<T::ResultType>>>, FlannError> {
         let neighbor_from_index_distance = |(index, distance_squared)| Neighbor {
             index: index as usize,
             distance_squared,
@@ -221,21 +290,28 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
         if points.is_empty() {
             let indices: Vec<i32> = Vec::new();
             let distances: Vec<T::ResultType> = Vec::new();
-            return indices
+            return Ok(indices
                 .into_iter()
                 .zip(distances.into_iter())
                 .map(neighbor_from_index_distance)
-                .chunks(num);
+                .chunks(num));
+        }
+        if points.len() % self.point_len != 0 {
+            return Err(FlannError::InvalidFlatPointsLen {
+                expected: self.point_len,
+                got: points.len(),
+            });
         }
         let num = num.min(self.len());
-        let mut indices: Vec<i32> = vec![-1; num * points.len()];
+        let total_points = points.len() / self.point_len;
+        let mut indices: Vec<i32> = vec![-1; num * total_points];
         let mut distances_squared: Vec<T::ResultType> =
-            vec![T::ResultType::default(); num * points.len()];
+            vec![T::ResultType::default(); num * total_points];
         let retval = unsafe {
             T::find_nearest_neighbors_index(
                 self.index,
                 points.as_ptr() as *mut T,
-                points.len() as i32,
+                total_points as i32,
                 indices.as_mut_ptr(),
                 distances_squared.as_mut_ptr(),
                 num as i32,
@@ -243,10 +319,10 @@ impl<T: Indexable, N: ArrayLength<T>> Index<T, N> {
             )
         };
         assert_eq!(retval, 0);
-        indices
+        Ok(indices
             .into_iter()
             .zip(distances_squared.into_iter())
             .map(neighbor_from_index_distance)
-            .chunks(num)
+            .chunks(num))
     }
 }

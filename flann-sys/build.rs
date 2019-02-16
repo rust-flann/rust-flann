@@ -1,17 +1,39 @@
 extern crate bindgen;
-extern crate cc;
-extern crate pkg_config;
+extern crate cmake;
 
 use std::env;
 use std::path::PathBuf;
+use cmake::Config;
 
 fn main() {
-    if libaries_are_present() {
-        build_code();
+    // Global configuration for FLANN build.
+    let mut config = Config::new("flann");
+    config
+        .define("BUILD_EXAMPLES", "OFF")
+        .define("BUILD_TESTS", "OFF")
+        .define("BUILD_DOC", "OFF")
+        .define("BUILD_PYTHON_BINDINGS", "OFF")
+        .define("BUILD_MATLAB_BINDINGS", "OFF")
+        .define("USE_OPENMP", "ON");
+
+    // Handle OS-specific requirements.
+    let target_os = env::var("CARGO_CFG_TARGET_OS");
+    match target_os.as_ref().map(|x| &**x) {
+        Ok("linux") => {
+            println!("cargo:rustc-link-lib=gomp");
+            println!("cargo:rustc-link-lib=stdc++");
+        },
+        _ => {},
     }
 
+    // Build FLANN and add it to cargo.
+    let mut dst = config.build();
+    dst.push("lib");
+    println!("cargo:rustc-link-search=native={}", dst.display());
+    println!("cargo:rustc-link-lib=static=flann_s");
+
     let bindings = bindgen::Builder::default()
-        .header("wrapper.h")
+        .header("flann/src/cpp/flann/flann.h")
         .generate()
         .expect("Unable to generate bindings");
 
@@ -19,20 +41,4 @@ fn main() {
     bindings
         .write_to_file(out_path.join("bindings.rs"))
         .expect("Couldn't write bindings!");
-}
-
-fn libaries_are_present() -> bool {
-    return grab_dependencies().is_ok();
-}
-
-fn grab_dependencies() -> Result<(), pkg_config::Error> {
-    pkg_config::probe_library("flann")?;
-    Ok(())
-}
-
-fn build_code() {
-    cc::Build::new()
-        .cpp(true)
-        .file("wrapper.cpp")
-        .compile("wrapper.a");
 }

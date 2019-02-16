@@ -1,6 +1,6 @@
-use Indexable;
 use raw::{self, flann_index_t, FLANNParameters};
 use std::os::raw::{c_int, c_uint};
+use Indexable;
 
 macro_rules! impl_index {
     (
@@ -28,13 +28,7 @@ macro_rules! impl_index {
                 speedup: *mut f32,
                 flann_params: *mut FLANNParameters,
             ) -> flann_index_t {
-                raw::$build_index(
-                    dataset,
-                    rows,
-                    cols,
-                    speedup,
-                    flann_params,
-                )
+                raw::$build_index(dataset, rows, cols, speedup, flann_params)
             }
 
             #[inline]
@@ -44,60 +38,33 @@ macro_rules! impl_index {
                 rows: c_int,
                 columns: c_int,
                 rebuild_threshold: f32,
-                flann_params: *const FLANNParameters,
             ) -> c_int {
-                raw::$add_points(
-                    index_ptr,
-                    points,
-                    rows,
-                    columns,
-                    rebuild_threshold,
-                    flann_params,
-                )
+                raw::$add_points(index_ptr, points, rows, columns, rebuild_threshold)
             }
 
             #[inline]
-            unsafe fn remove_point(
-                index_ptr: flann_index_t,
-                point_id: c_uint,
-                flann_params: *const FLANNParameters,
-            ) -> c_int {
-                raw::$remove_point(index_ptr, point_id, flann_params)
+            unsafe fn remove_point(index_ptr: flann_index_t, point_id: c_uint) -> c_int {
+                raw::$remove_point(index_ptr, point_id)
             }
 
             #[inline]
-            unsafe fn get_point(
-                index_ptr: flann_index_t,
-                point_id: c_uint,
-                point: *mut Self,
-                columns: c_int,
-                flann_params: *const FLANNParameters,
-            ) -> c_int {
-                raw::$get_point(index_ptr, point_id,point,columns, flann_params)
+            unsafe fn get_point(index_ptr: flann_index_t, point_id: c_uint) -> *mut Self {
+                raw::$get_point(index_ptr, point_id)
             }
 
             #[inline]
-            unsafe fn veclen(
-                index_ptr: flann_index_t,
-                flann_params: *const FLANNParameters,
-            ) -> c_uint {
-                raw::$veclen(index_ptr, flann_params)
+            unsafe fn veclen(index_ptr: flann_index_t) -> c_uint {
+                raw::$veclen(index_ptr)
             }
 
             #[inline]
-            unsafe fn size(
-                index_ptr: flann_index_t,
-                flann_params: *const FLANNParameters,
-            ) -> c_uint {
-                raw::$size(index_ptr, flann_params)
+            unsafe fn size(index_ptr: flann_index_t) -> c_uint {
+                raw::$size(index_ptr)
             }
 
             #[inline]
-            unsafe fn used_memory(
-                index_ptr: flann_index_t,
-                flann_params: *const FLANNParameters,
-            ) -> c_int {
-                raw::$used_memory(index_ptr, flann_params)
+            unsafe fn used_memory(index_ptr: flann_index_t) -> c_int {
+                raw::$used_memory(index_ptr)
             }
 
             #[inline]
@@ -108,7 +75,7 @@ macro_rules! impl_index {
                 indices: *mut c_int,
                 dists: *mut Self::ResultType,
                 nn: c_int,
-                flann_params: *const FLANNParameters,
+                flann_params: *mut FLANNParameters,
             ) -> c_int {
                 raw::$find_nearest_neighbors_index(
                     index_id,
@@ -129,7 +96,7 @@ macro_rules! impl_index {
                 dists: *mut Self::ResultType,
                 max_nn: c_int,
                 radius: f32,
-                flann_params: *const FLANNParameters,
+                flann_params: *mut FLANNParameters,
             ) -> c_int {
                 raw::$radius_search(
                     index_ptr,
@@ -150,7 +117,7 @@ macro_rules! impl_index {
                 raw::$free_index(index_id, flann_params)
             }
         }
-    }
+    };
 }
 
 impl_index!(
@@ -184,93 +151,31 @@ impl_index!(
 );
 
 impl_index!(
-    i8,
-    f32,
-    flann_build_index_char,
-    flann_add_points_char,
-    flann_remove_point_char,
-    flann_get_point_char,
-    flann_veclen_char,
-    flann_size_char,
-    flann_used_memory_char,
-    flann_find_nearest_neighbors_index_char,
-    flann_radius_search_char,
-    flann_free_index_char,
-);
-
-impl_index!(
     u8,
     f32,
-    flann_build_index_uint8_t,
-    flann_add_points_uint8_t,
-    flann_remove_point_uint8_t,
-    flann_get_point_uint8_t,
-    flann_veclen_uint8_t,
-    flann_size_uint8_t,
-    flann_used_memory_uint8_t,
-    flann_find_nearest_neighbors_index_uint8_t,
-    flann_radius_search_uint8_t,
-    flann_free_index_uint8_t,
-);
-
-impl_index!(
-    i16,
-    f32,
-    flann_build_index_int16_t,
-    flann_add_points_int16_t,
-    flann_remove_point_int16_t,
-    flann_get_point_int16_t,
-    flann_veclen_int16_t,
-    flann_size_int16_t,
-    flann_used_memory_int16_t,
-    flann_find_nearest_neighbors_index_int16_t,
-    flann_radius_search_int16_t,
-    flann_free_index_int16_t,
-);
-
-impl_index!(
-    u16,
-    f32,
-    flann_build_index_uint16_t,
-    flann_add_points_uint16_t,
-    flann_remove_point_uint16_t,
-    flann_get_point_uint16_t,
-    flann_veclen_uint16_t,
-    flann_size_uint16_t,
-    flann_used_memory_uint16_t,
-    flann_find_nearest_neighbors_index_uint16_t,
-    flann_radius_search_uint16_t,
-    flann_free_index_uint16_t,
+    flann_build_index_byte,
+    flann_add_points_byte,
+    flann_remove_point_byte,
+    flann_get_point_byte,
+    flann_veclen_byte,
+    flann_size_byte,
+    flann_used_memory_byte,
+    flann_find_nearest_neighbors_index_byte,
+    flann_radius_search_byte,
+    flann_free_index_byte,
 );
 
 impl_index!(
     i32,
     f32,
-    flann_build_index_int32_t,
-    flann_add_points_int32_t,
-    flann_remove_point_int32_t,
-    flann_get_point_int32_t,
-    flann_veclen_int32_t,
-    flann_size_int32_t,
-    flann_used_memory_int32_t,
-    flann_find_nearest_neighbors_index_int32_t,
-    flann_radius_search_int32_t,
-    flann_free_index_int32_t,
+    flann_build_index_int,
+    flann_add_points_int,
+    flann_remove_point_int,
+    flann_get_point_int,
+    flann_veclen_int,
+    flann_size_int,
+    flann_used_memory_int,
+    flann_find_nearest_neighbors_index_int,
+    flann_radius_search_int,
+    flann_free_index_int,
 );
-
-/*
-impl_index!(
-    u32,
-    f32,
-    flann_build_index_uint32_t,
-    flann_add_points_uint32_t,
-    flann_remove_point_uint32_t,
-    flann_get_point_uint32_t,
-    flann_veclen_uint32_t,
-    flann_size_uint32_t,
-    flann_used_memory_uint32_t,
-    flann_find_nearest_neighbors_index_uint32_t,
-    flann_radius_search_uint32_t,
-    flann_free_index_uint32_t,
-);
-*/

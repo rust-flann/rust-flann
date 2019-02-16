@@ -1,5 +1,8 @@
+use enums::{Algorithm, CentersInit, Checks, LogLevel};
 use raw;
-use enums::{Algorithm, CentersInit, Checks, DistanceType, LogLevel};
+use std::os::raw::c_long;
+
+const DEFAULT_REBUILD_THRESHOLD: f32 = 2.0;
 
 #[derive(Debug, Clone)]
 pub struct Parameters {
@@ -23,9 +26,8 @@ pub struct Parameters {
     pub key_size: u32,
     pub multi_probe_level: u32,
     pub log_level: LogLevel,
-    pub random_seed: i64,
-    pub distance_type: DistanceType,
-    pub distance_order: i32,
+    pub random_seed: c_long,
+    pub rebuild_threshold: f32,
 }
 
 impl Default for Parameters {
@@ -62,9 +64,7 @@ impl Parameters {
             log_level: LogLevel::from_raw(v.log_level)
                 .ok_or_else(|| format!("Illegal log level enum value: {}", v.log_level))?,
             random_seed: v.random_seed,
-            distance_type: DistanceType::from_raw(v.distance_type)
-                .ok_or_else(|| format!("Illegal distanc etype enum value: {}", v.log_level))?,
-            distance_order: v.distance_order,
+            rebuild_threshold: DEFAULT_REBUILD_THRESHOLD,
         })
     }
 }
@@ -93,8 +93,6 @@ impl<'a> Into<raw::FLANNParameters> for &'a Parameters {
             multi_probe_level_: self.multi_probe_level,
             log_level: self.log_level.as_raw(),
             random_seed: self.random_seed,
-            distance_type: self.distance_type.as_raw(),
-            distance_order: self.distance_order,
         }
     }
 }
