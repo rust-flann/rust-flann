@@ -1,4 +1,10 @@
-use super::*;
+#[macro_use]
+extern crate itertools;
+#[macro_use]
+extern crate assert_approx_eq;
+extern crate flann;
+
+use flann::*;
 
 #[test]
 fn builds_and_adds() {

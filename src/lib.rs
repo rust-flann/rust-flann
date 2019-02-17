@@ -3,14 +3,10 @@
 #[allow(unknown_lints, unused_imports)]
 #[macro_use]
 extern crate generic_array;
-#[cfg_attr(test, macro_use)]
-extern crate itertools;
-#[cfg(test)]
-#[macro_use]
-extern crate assert_approx_eq;
 #[macro_use]
 extern crate failure;
 pub extern crate flann_sys as raw;
+extern crate itertools;
 
 mod enums;
 mod index;
@@ -18,8 +14,6 @@ mod indexable;
 mod indices;
 mod parameters;
 mod slice_index;
-#[cfg(test)]
-mod tests;
 mod vec_index;
 
 pub use enums::{Algorithm, CentersInit, Checks, DistanceType, LogLevel};
