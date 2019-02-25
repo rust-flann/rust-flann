@@ -1,11 +1,12 @@
 [package]
-authors = ["Adnan Ademovic <adnanademovic100@gmail.com>"]
+authors = ["Adnan Ademovic <adnanademovic100@gmail.com>", "Geordon Worley <vadixidav@gmail.com>"]
 description = "FFI bindings for the FLANN library"
 license = "MIT"
 name = "flann-sys"
 readme = "../README.md"
-repository = "https://github.com/adnanademovic/rust-flann"
-version = "0.0.4"
+repository = "https://github.com/rust-flann/rust-flann"
+documentation = "https://docs.rs/flann-sys/"
+version = "0.1.0"
 
 [build-dependencies]
 bindgen = "0.32.1"
